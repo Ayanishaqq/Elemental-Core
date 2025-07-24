@@ -663,7 +663,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                             direction.clone().rotateAroundY(Math.PI/2).multiply(x)
                         ).add(0, y, 0);
                         
-                        player.getWorld().spawnParticle(Particle.WATER_SPLASH, particleLoc, 10, 0.5, 0.5, 0.5);
+                        player.getWorld().spawnParticle(Particle.DRIP_WATER, particleLoc, 10, 0.5, 0.5, 0.5);
                     }
                 }
                 
@@ -1282,7 +1282,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             clones.add(clone);
             
             // Spawn effect
-            spawnLoc.getWorld().spawnParticle(Particle.SMOKE_NORMAL, spawnLoc, 20, 0.5, 1, 0.5); // Changed to SMOKE_NORMAL
+            spawnLoc.getWorld().spawnParticle(Particle.CLOUD, spawnLoc, 20, 0.5, 1, 0.5); // Changed to SMOKE_NORMAL
         }
         
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
@@ -1299,7 +1299,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     // Remove clones
                     for (Entity clone : clones) {
                         if (clone.isValid()) {
-                            clone.getWorld().spawnParticle(Particle.SMOKE_NORMAL, clone.getLocation(), 20, 0.5, 1, 0.5); // Changed to SMOKE_NORMAL
+                            clone.getWorld().spawnParticle(Particle.CLOUD, clone.getLocation(), 20, 0.5, 1, 0.5); // Changed to SMOKE_NORMAL
                             clone.remove();
                         }
                     }
@@ -1346,7 +1346,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         double damage = 3.0 * multiplier;
         
         // Create darkness cloud at start
-        start.getWorld().spawnParticle(Particle.SMOKE_NORMAL, start, 100, 2, 2, 2); // Changed to SMOKE_NORMAL
+        start.getWorld().spawnParticle(Particle.CLOUD, start, 100, 2, 2, 2); // Changed to SMOKE_NORMAL
         
         // Blind and wither enemies at start location
         for (Entity entity : start.getWorld().getNearbyEntities(start, 5, 5, 5)) {
@@ -1363,7 +1363,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         player.teleport(target);
         
         // Create darkness cloud at target
-        target.getWorld().spawnParticle(Particle.SMOKE_NORMAL, target, 100, 2, 2, 2); // Changed to SMOKE_NORMAL
+        target.getWorld().spawnParticle(Particle.CLOUD, target, 100, 2, 2, 2); // Changed to SMOKE_NORMAL
         
         player.getWorld().playSound(start, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
         player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
