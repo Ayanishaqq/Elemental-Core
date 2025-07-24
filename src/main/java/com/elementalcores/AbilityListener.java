@@ -9,7 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.ItemStack;  // Fixed: Added missing import
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.RayTraceResult;
@@ -52,7 +52,7 @@ public class AbilityListener implements Listener {
             switch (type) {
                 case EARTH -> earthPrison(player, radius, duration);
                 case WATER -> tsunamiSurge(player, radius, damage);
-                case FIRE -> meteorStrike(player, radius, damage);
+                case FIRE -> meteorStrike(player, radius, damage, duration);  // Fixed: Added duration param
                 case AIR -> tornadoLaunch(player, radius);
                 case LIGHTNING -> stormcall(player, targets);
                 case ICE -> glacialSpike(player, duration, damage);
@@ -63,7 +63,7 @@ public class AbilityListener implements Listener {
         } else {
             // Shift+Right Click
             switch (type) {
-                case EARTH -> seismicSlam(player, radius, duration);
+                case EARTH -> seismicSlam(player, radius, duration, damage);  // Fixed: Added damage param
                 case WATER -> aquaVortex(player, radius, duration, damage);
                 case FIRE -> infernalEruption(player, radius, duration, damage);
                 case AIR -> windBlade(player, damage, targets);
@@ -104,7 +104,7 @@ public class AbilityListener implements Listener {
         loc.getWorld().spawnParticle(Particle.DUST, loc, 50, new Particle.DustOptions(org.bukkit.Color.fromRGB(139, 90, 43), 1));
     }
 
-    private void seismicSlam(Player player, int radius, int duration) {
+    private void seismicSlam(Player player, int radius, int duration, int damage) {  // Fixed: Added damage param
         player.setVelocity(player.getLocation().getDirection().multiply(2).setY(1)); // Leap forward
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             Location loc = player.getLocation();
@@ -113,7 +113,7 @@ public class AbilityListener implements Listener {
                 if (e != player && e instanceof LivingEntity) {
                     e.setVelocity(new Vector(0, 1.5, 0)); // Launch up
                     ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, duration * 20, 2)); // Stun
-                    ((LivingEntity) e).damage(damage / 2.0);  // Fixed: Defined damage locally or use param (assuming from method scope; adjust if needed)
+                    ((LivingEntity) e).damage(damage / 2.0);
                 }
             }
             // Particles: explosion, dust
@@ -157,7 +157,7 @@ public class AbilityListener implements Listener {
     }
 
     // Fire Abilities
-    private void meteorStrike(Player player, int radius, int damage) {
+    private void meteorStrike(Player player, int radius, int damage, int duration) {  // Fixed: Added duration param
         RayTraceResult ray = player.getWorld().rayTraceEntities(player.getEyeLocation(), player.getEyeLocation().getDirection(), 50, e -> e instanceof LivingEntity && e != player);
         Location targetLoc = (ray != null && ray.getHitEntity() != null) ? ray.getHitEntity().getLocation() : player.getEyeLocation().add(player.getEyeLocation().getDirection().multiply(20));
         FallingBlock meteor = targetLoc.getWorld().spawnFallingBlock(targetLoc.add(0, 10, 0), Material.FIRE.createBlockData());
@@ -168,7 +168,7 @@ public class AbilityListener implements Listener {
                 for (Entity e : getNearbyEntities(meteor.getLocation(), radius)) {
                     if (e instanceof LivingEntity) {
                         ((LivingEntity) e).damage(damage);
-                        e.setFireTicks(duration * 20);  // Fixed: Use local duration
+                        e.setFireTicks(duration * 20);
                     }
                 }
                 meteor.remove();
@@ -387,9 +387,9 @@ public class AbilityListener implements Listener {
                 }
             }
         }
-        // Particles: glow, fireworks_spark (fixed name)
+        // Particles: glow, firework (fixed name)
         start.getWorld().spawnParticle(Particle.GLOW, start, 50);
-        start.getWorld().spawnParticle(Particle.FIREWORKS_SPARK, start, 50);
+        start.getWorld().spawnParticle(Particle.FIREWORK, start, 50);
     }
 
     private void sanctuary(Player player, int radius, int duration) {
