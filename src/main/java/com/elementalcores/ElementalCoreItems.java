@@ -269,19 +269,19 @@ public class ElementalCoreItems {
         return "f";
     }
 
-    public class NamespacedKeys {
-        private static JavaPlugin plugin;
+        public class NamespacedKeys {
+            private static JavaPlugin plugin;
 
-    public static void setPlugin(JavaPlugin pl) {
+        public static void setPlugin(JavaPlugin pl) {
         plugin = pl;
-    }
+        }
 
-    public static NamespacedKey coreType() {
-        return new NamespacedKey(plugin, "core_type");
-    }
+        public static NamespacedKey coreType() {
+            return new NamespacedKey(plugin, "core_type");
+        }
 
-    public static NamespacedKey coreTier() {
+        public static NamespacedKey coreTier() {
         return new NamespacedKey(plugin, "core_tier");
+        }
     }
 }
-
