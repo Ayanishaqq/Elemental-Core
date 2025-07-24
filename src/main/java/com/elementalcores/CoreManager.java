@@ -149,33 +149,36 @@ public class CoreManager {
         }
     }
 
-    private String getRightClickAbilityName(CoreType type) {
-        return switch (type) {
-            case EARTH -> "Earth Prison";
-            case WATER -> "Tsunami Surge";
-            case FIRE -> "Meteor Strike";
-            case AIR -> "Tornado Launch";
-            case LIGHTNING -> "Stormcall";
-            case ICE -> "Glacial Spike";
-            case NATURE -> "Entangling Roots";
-            case SHADOW -> "Shadow Clone";
-            case LIGHT -> "Solar Beam";
-        };
-    }
+// ... (rest of the file same as before)
 
-    private String getShiftRightClickAbilityName(CoreType type) {
-        return switch (type) {
-            case EARTH -> "Seismic Slam";
-            case WATER -> "Aqua Vortex";
-            case FIRE -> "Infernal Eruption";
-            case AIR -> "Wind Blade";
-            case LIGHTNING -> "Lightning Dash";
-            case ICE -> "Blizzard";
-            case NATURE -> "Nature’s Wrath";
-            case SHADOW -> "Void Step";
-            case LIGHT -> "Sanctuary";
-        };
-    }
+// Change these to public
+public String getRightClickAbilityName(CoreType type) {
+    return switch (type) {
+        case EARTH -> "Earth Prison";
+        case WATER -> "Tsunami Surge";
+        case FIRE -> "Meteor Strike";
+        case AIR -> "Tornado Launch";
+        case LIGHTNING -> "Stormcall";
+        case ICE -> "Glacial Spike";
+        case NATURE -> "Entangling Roots";
+        case SHADOW -> "Shadow Clone";
+        case LIGHT -> "Solar Beam";
+    };
+}
+
+public String getShiftRightClickAbilityName(CoreType type) {
+    return switch (type) {
+        case EARTH -> "Seismic Slam";
+        case WATER -> "Aqua Vortex";
+        case FIRE -> "Infernal Eruption";
+        case AIR -> "Wind Blade";
+        case LIGHTNING -> "Lightning Dash";
+        case ICE -> "Blizzard";
+        case NATURE -> "Nature’s Wrath";
+        case SHADOW -> "Void Step";
+        case LIGHT -> "Sanctuary";
+    };
+}
 
     private String getTierDescription(int tier) {
         return switch (tier) {
