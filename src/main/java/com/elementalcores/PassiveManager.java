@@ -1,5 +1,6 @@
 package com.elementalcores;
 
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
@@ -21,15 +22,27 @@ public class PassiveManager implements Listener {
             if (!coreManager.isCore(offhand)) continue;
 
             CoreType type = coreManager.getCoreType(offhand);
-            int tier = coreManager.getCoreTier(offhand); // Tiers don't affect passives much, but can scale if needed
-            int amplifier = tier - 1; // e.g., T3 = amplifier 2
+            int tier = coreManager.getCoreTier(offhand);
+            int amplifier = tier - 1;
 
-            player.addPotionEffect(new PotionEffect(type.getPassive1(), 100, amplifier, true, false));
-            player.addPotionEffect(new PotionEffect(type.getPassive2(), 100, amplifier, true, false));
+            if (type.getPassive1() != null) {
+                player.addPotionEffect(new PotionEffect(type.getPassive1(), 100, amplifier, true, false));
+            }
+            if (type.getPassive2() != null) {
+                player.addPotionEffect(new PotionEffect(type.getPassive2(), 100, amplifier, true, false));
+            }
 
-            // Special cases (e.g., Ice resistance to slowness: remove slowness effect)
-            if (type == CoreType.ICE && player.hasPotionEffect(PotionEffectType.SLOWNESS)) {
-                player.removePotionEffect(PotionEffectType.SLOWNESS);
+            // Special cases
+            if (type == CoreType.ICE) {
+                // Resistance to Slowness: Remove slowness effect
+                if (player.hasPotionEffect(PotionEffectType.SLOWNESS)) {
+                    player.removePotionEffect(PotionEffectType.SLOWNESS);
+                }
+                // Frost Walker: Freeze water under player
+                org.bukkit.block.Block block = player.getLocation().subtract(0, 1, 0).getBlock();
+                if (block.getType() == Material.WATER) {
+                    block.setType(Material.FROSTED_ICE);
+                }
             }
             if (type == CoreType.SHADOW) {
                 // Short bursts of invisibility
