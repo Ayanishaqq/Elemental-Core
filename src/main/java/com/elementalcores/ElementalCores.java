@@ -2,30 +2,38 @@ package com.elementalcores;
 
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.Listener;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.entity.Player;
-import org.bukkit.ChatColor;
+import org.bukkit.event.EventHandler;
 
-public class ElementalCores extends JavaPlugin implements Listener {
+public class ElementalCores extends JavaPlugin implements Listener {  // Implements Listener for join event
 
     private CoreManager coreManager;
+    private AbilityListener abilityListener;
+    private CommandHandler commandHandler;
+    private RecipeManager recipeManager;
+    private PassiveManager passiveManager;
 
     @Override
     public void onEnable() {
-        getLogger().info("ElementalCores enabled!");
+        getLogger().info("ElementalCores v1.21.5 enabled!");
 
-        NamespacedKeys.setPlugin(this);
+        // Initialize managers
+        coreManager = new CoreManager(this);
+        abilityListener = new AbilityListener(this, coreManager);
+        commandHandler = new CommandHandler(this, coreManager);
+        recipeManager = new RecipeManager(this, coreManager);
+        passiveManager = new PassiveManager(this, coreManager);
 
-        coreManager = new CoreManager();
-        getCommand("core").setExecutor(new CommandHandler(this, coreManager));
+        // Register events, commands, recipes
+        getServer().getPluginManager().registerEvents(abilityListener, this);
+        getServer().getPluginManager().registerEvents(passiveManager, this);
+        getServer().getPluginManager().registerEvents(recipeManager, this);
+        getServer().getPluginManager().registerEvents(this, this);  // Register for PlayerJoinEvent
+        getCommand("core").setExecutor(commandHandler);
+        recipeManager.registerRecipes();
 
-        getServer().getPluginManager().registerEvents(this, this);
-        getServer().getPluginManager().registerEvents(new AbilityListener(), this);
-        getServer().getPluginManager().registerEvents(new PassiveManager(), this);
-
-        new RecipeManager(this).registerRecipes();
+        // Scheduler for passives (check every second)
+        getServer().getScheduler().runTaskTimer(this, passiveManager::applyPassives, 0L, 20L);
     }
 
     @Override
@@ -36,38 +44,16 @@ public class ElementalCores extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        if (!player.hasPlayedBefore()) {
-            playFirstJoinAnimation(player, this);
-        }
-    }
-
-    public void playFirstJoinAnimation(Player player, JavaPlugin plugin) {
-        String[] coreNames = {
-            ChatColor.GOLD + "Earth",
-            ChatColor.AQUA + "Water",
-            ChatColor.RED + "Fire",
-            ChatColor.WHITE + "Air",
-            ChatColor.YELLOW + "Lightning",
-            ChatColor.BLUE + "Ice",
-            ChatColor.GREEN + "Nature",
-            ChatColor.DARK_PURPLE + "Shadow",
-            ChatColor.LIGHT_PURPLE + "Light"
-        };
-
-        new BukkitRunnable() {
-            int ticks = 0;
-            int index = 0;
-            @Override
-            public void run() {
-                if (ticks >= 140) { // 7 seconds at 20 ticks per second
-                    this.cancel();
-                    coreManager.giveRandomCore(player);
-                    return;
-                }
-                player.sendTitle(coreNames[index], ChatColor.GRAY + "Elemental Core", 0, 20, 0);
-                index = (index + 1) % coreNames.length;
-                ticks += 10;
+        // Check if player has no core (assume "first join" if inventory has no core)
+        boolean hasCore = false;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && coreManager.isCore(item)) {
+                hasCore = true;
+                break;
             }
-        }.runTaskTimer(plugin, 0, 10); // Change title every 10 ticks (0.5s)
+        }
+        if (!hasCore) {
+            coreManager.giveRandomCore(player);  // Give core with animation on first join
+        }
     }
 }
