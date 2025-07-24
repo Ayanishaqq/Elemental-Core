@@ -2,7 +2,7 @@ package com.elementalcores;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;  // Fixed missing import
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -48,10 +48,10 @@ public class CoreManager {
     }
 
     public ItemStack createHeavyCore() {
-        ItemStack heavy = new ItemStack(Material.NETHERITE_INGOT);
+        // Updated: Use vanilla Heavy Core from 1.21 (no custom model/NBT needed)
+        ItemStack heavy = new ItemStack(Material.HEAVY_CORE);
         ItemMeta meta = heavy.getItemMeta();
-        meta.setCustomModelData(1100);
-        meta.setDisplayName(ChatColor.DARK_GRAY + "Heavy Core");
+        meta.setDisplayName(ChatColor.DARK_GRAY + "Heavy Core");  // Keep custom name from spec
         heavy.setItemMeta(meta);
         return heavy;
     }
