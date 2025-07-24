@@ -2,8 +2,15 @@ name: ElementalCores
 version: 1.21.5
 main: com.elementalcores.ElementalCores
 api-version: 1.21
-description: Elemental Cores plugin with abilities and upgrades.
 commands:
   core:
-    description: Core commands
-    usage: /core <give|reload|info>
+    description: Main command for Elemental Cores plugin
+    usage: /core <give|info|reload>
+    permission: elementalcores.use
+permissions:
+  elementalcores.use:
+    description: Allows using core commands
+    default: true
+  elementalcores.admin:
+    description: Allows using admin commands
+    default: op
