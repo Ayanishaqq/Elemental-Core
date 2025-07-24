@@ -6,7 +6,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.RecipeChoice;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.NamespacedKey;
 
@@ -20,29 +19,29 @@ public class RecipeManager implements Listener {
     }
 
     public void registerRecipes() {
-        // Element Caller recipe
+        // Element Caller recipe (fixed shape, uses vanilla Heavy Core)
         ShapedRecipe callerRecipe = new ShapedRecipe(new NamespacedKey(plugin, "element_caller"), coreManager.createElementCaller());
-        callerRecipe.shape("DHD", "W E W", "DHD");  // Adjusted for 3x3
+        callerRecipe.shape("DHD", "WEW", "DHD");  // 3 chars per row
         callerRecipe.setIngredient('D', Material.DIAMOND_BLOCK);
-        callerRecipe.setIngredient('H', new RecipeChoice.ExactChoice(coreManager.createHeavyCore()));
+        callerRecipe.setIngredient('H', Material.HEAVY_CORE);  // Updated to vanilla Material
         callerRecipe.setIngredient('W', Material.WITHER_SKELETON_SKULL);
         callerRecipe.setIngredient('E', Material.PAPER);  // Any core (NBT checked in event)
         plugin.getServer().addRecipe(callerRecipe);
 
-        // T1 → T2 upgrade (generic shape, NBT handled in event)
+        // T1 → T2 upgrade (fixed shape)
         ShapedRecipe t1ToT2 = new ShapedRecipe(new NamespacedKey(plugin, "upgrade_t1_t2"), new ItemStack(Material.PAPER)); // Placeholder result
-        t1ToT2.shape("DTD", "N E N", "DTD");
+        t1ToT2.shape("DTD", "NEN", "DTD");  // 3 chars per row
         t1ToT2.setIngredient('D', Material.DIAMOND_BLOCK);
         t1ToT2.setIngredient('T', Material.TOTEM_OF_UNDYING);
         t1ToT2.setIngredient('N', Material.NETHER_STAR);
         t1ToT2.setIngredient('E', Material.PAPER);
         plugin.getServer().addRecipe(t1ToT2);
 
-        // T2 → T3 upgrade
+        // T2 → T3 upgrade (fixed shape, uses vanilla Heavy Core)
         ShapedRecipe t2ToT3 = new ShapedRecipe(new NamespacedKey(plugin, "upgrade_t2_t3"), new ItemStack(Material.PAPER));
-        t2ToT3.shape("NHN", "N E N", "NHN");
+        t2ToT3.shape("NHN", "NEN", "NHN");  // 3 chars per row
         t2ToT3.setIngredient('N', Material.NETHERITE_BLOCK);
-        t2ToT3.setIngredient('H', new RecipeChoice.ExactChoice(coreManager.createHeavyCore()));
+        t2ToT3.setIngredient('H', Material.HEAVY_CORE);  // Updated to vanilla Material
         t2ToT3.setIngredient('E', Material.NETHER_STAR);
         t2ToT3.setIngredient('E', Material.PAPER);
         plugin.getServer().addRecipe(t2ToT3);
