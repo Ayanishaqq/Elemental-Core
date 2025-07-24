@@ -3,29 +3,29 @@ package com.elementalcores;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.Listener;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.inventory.PrepareItemCraftEvent;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.entity.Player;
+import org.bukkit.ChatColor;
 
 public class ElementalCores extends JavaPlugin implements Listener {
 
-    private RecipeManager recipeManager;
+    private CoreManager coreManager;
 
     @Override
     public void onEnable() {
         getLogger().info("ElementalCores enabled!");
 
-        // Set up NamespacedKeys helper for NBT
         NamespacedKeys.setPlugin(this);
 
-        // Register recipes
-        recipeManager = new RecipeManager(this);
-        recipeManager.registerRecipes();
+        coreManager = new CoreManager();
+        getCommand("core").setExecutor(new CommandHandler(this, coreManager));
 
-        // Register event listeners
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(new AbilityListener(), this);
+        getServer().getPluginManager().registerEvents(new PassiveManager(), this);
 
-        // TODO: Register your commands here
-        // getCommand("core").setExecutor(new CoreCommandExecutor(this));
+        new RecipeManager(this).registerRecipes();
     }
 
     @Override
@@ -33,21 +33,41 @@ public class ElementalCores extends JavaPlugin implements Listener {
         getLogger().info("ElementalCores disabled!");
     }
 
-    // NBT check for crafting (example for Element Caller)
     @EventHandler
-    public void onPrepareItemCraft(PrepareItemCraftEvent event) {
-        if (event.getRecipe() == null) return;
-
-        // Example: Check if crafting Element Caller
-        ItemStack result = event.getRecipe().getResult();
-        if (ElementalCoreItems.isElementCaller(result)) {
-            ItemStack[] matrix = event.getInventory().getMatrix();
-            ItemStack center = matrix[4]; // Center slot in 3x3 grid
-            if (!ElementalCoreItems.isRealElementalCore(center)) {
-                event.getInventory().setResult(null); // Cancel crafting if not a real core
-            }
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        if (!player.hasPlayedBefore()) {
+            playFirstJoinAnimation(player, this);
         }
+    }
 
-        // TODO: Add similar checks for T1->T2 and T2->T3 upgrades if needed
+    public void playFirstJoinAnimation(Player player, JavaPlugin plugin) {
+        String[] coreNames = {
+            ChatColor.GOLD + "Earth",
+            ChatColor.AQUA + "Water",
+            ChatColor.RED + "Fire",
+            ChatColor.WHITE + "Air",
+            ChatColor.YELLOW + "Lightning",
+            ChatColor.BLUE + "Ice",
+            ChatColor.GREEN + "Nature",
+            ChatColor.DARK_PURPLE + "Shadow",
+            ChatColor.LIGHT_PURPLE + "Light"
+        };
+
+        new BukkitRunnable() {
+            int ticks = 0;
+            int index = 0;
+            @Override
+            public void run() {
+                if (ticks >= 140) { // 7 seconds at 20 ticks per second
+                    this.cancel();
+                    coreManager.giveRandomCore(player);
+                    return;
+                }
+                player.sendTitle(coreNames[index], ChatColor.GRAY + "Elemental Core", 0, 20, 0);
+                index = (index + 1) % coreNames.length;
+                ticks += 10;
+            }
+        }.runTaskTimer(plugin, 0, 10); // Change title every 10 ticks (0.5s)
     }
 }
