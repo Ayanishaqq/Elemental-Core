@@ -663,7 +663,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                             direction.clone().rotateAroundY(Math.PI/2).multiply(x)
                         ).add(0, y, 0);
                         
-                        player.getWorld().spawnParticle(Particle.DRIP_WATER, particleLoc, 10, 0.5, 0.5, 0.5);
+                        player.getWorld().spawnParticle(Particle.SPLASH, particleLoc, 10, 0.5, 0.5, 0.5);
                     }
                 }
                 
