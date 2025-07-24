@@ -6,6 +6,8 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.NamespacedKey;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -266,4 +268,20 @@ public class ElementalCoreItems {
         if (index >= 0 && index < codes.length) return codes[index];
         return "f";
     }
+
+    public class NamespacedKeys {
+        private static JavaPlugin plugin;
+
+    public static void setPlugin(JavaPlugin pl) {
+        plugin = pl;
+    }
+
+    public static NamespacedKey coreType() {
+        return new NamespacedKey(plugin, "core_type");
+    }
+
+    public static NamespacedKey coreTier() {
+        return new NamespacedKey(plugin, "core_tier");
+    }
 }
+
