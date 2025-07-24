@@ -1,87 +1,56 @@
 package com.elementalcores;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.PrepareItemCraftEvent;
-import org.bukkit.inventory.CraftingInventory;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.RecipeChoice;
-import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.NamespacedKey;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
+import org.bukkit.plugin.java.JavaPlugin;
 
-public class RecipeManager implements Listener {
-    private final ElementalCores plugin;
-    private final CoreManager coreManager;
+public class RecipeManager {
 
-    public RecipeManager(ElementalCores plugin, CoreManager coreManager) {
+    private final JavaPlugin plugin;
+
+    public RecipeManager(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.coreManager = coreManager;
     }
 
     public void registerRecipes() {
-        // Element Caller recipe
-        ShapedRecipe callerRecipe = new ShapedRecipe(new NamespacedKey(plugin, "element_caller"), coreManager.createElementCaller());
-        callerRecipe.shape("DHD", "W E W", "DHD");  // Adjusted for 3x3
-        callerRecipe.setIngredient('D', Material.DIAMOND_BLOCK);
-        callerRecipe.setIngredient('H', new RecipeChoice.ExactChoice(coreManager.createHeavyCore()));  // Fixed: Use ExactChoice for custom ItemStack
-        callerRecipe.setIngredient('W', Material.WITHER_SKELETON_SKULL);
-        callerRecipe.setIngredient('E', Material.PAPER);  // Any core (NBT checked in event)
-        plugin.getServer().addRecipe(callerRecipe);
+        // Element Caller Recipe
+        ItemStack elementCaller = ElementalCoreItems.getElementCaller();
 
-        // T1 → T2 upgrade (generic shape, NBT handled in event)
-        ShapedRecipe t1ToT2 = new ShapedRecipe(new NamespacedKey(plugin, "upgrade_t1_t2"), new ItemStack(Material.PAPER)); // Placeholder result
-        t1ToT2.shape("DTD", "N E N", "DTD");
-        t1ToT2.setIngredient('D', Material.DIAMOND_BLOCK);
-        t1ToT2.setIngredient('T', Material.TOTEM_OF_UNDYING);
-        t1ToT2.setIngredient('N', Material.NETHER_STAR);
-        t1ToT2.setIngredient('E', Material.PAPER);
-        plugin.getServer().addRecipe(t1ToT2);
+        NamespacedKey key = new NamespacedKey(plugin, "element_caller");
+        ShapedRecipe recipe = new ShapedRecipe(key, elementCaller);
 
-        // T2 → T3 upgrade
-        ShapedRecipe t2ToT3 = new ShapedRecipe(new NamespacedKey(plugin, "upgrade_t2_t3"), new ItemStack(Material.PAPER));
-        t2ToT3.shape("NHN", "N E N", "NHN");
-        t2ToT3.setIngredient('N', Material.NETHERITE_BLOCK);
-        t2ToT3.setIngredient('H', new RecipeChoice.ExactChoice(coreManager.createHeavyCore()));  // Fixed: Use ExactChoice for custom ItemStack
-        t2ToT3.setIngredient('E', Material.NETHER_STAR);
-        t2ToT3.setIngredient('E', Material.PAPER);
-        plugin.getServer().addRecipe(t2ToT3);
-    }
+        // Correct 3x3 shape
+        recipe.shape("ABA", "CDC", "ABA");
+        recipe.setIngredient('A', Material.DIAMOND_BLOCK);
+        recipe.setIngredient('B', Material.HEAVY_CORE); // 1.21+ vanilla item
+        recipe.setIngredient('C', Material.WITHER_SKELETON_SKULL);
+        recipe.setIngredient('D', Material.PAPER); // Placeholder for Elemental Core (NBT check in event)
 
-    @EventHandler
-    public void onPrepareCraft(PrepareItemCraftEvent event) {
-        CraftingInventory inv = event.getInventory();
-        ItemStack result = inv.getResult();
-        if (result == null) return;
+        Bukkit.addRecipe(recipe);
 
-        // Find the center item (the core)
-        ItemStack coreItem = inv.getItem(4); // Center of 3x3 grid (0-based index 4)
-        if (coreItem == null || !coreManager.isCore(coreItem)) {
-            inv.setResult(null); // Invalid if no core or not a real core (NBT check)
-            return;
-        }
+        // Upgrade T1 -> T2 Recipe
+        ItemStack t2Core = ElementalCoreItems.getExampleCore(2); // Replace with your method for T2 core
+        NamespacedKey t2Key = new NamespacedKey(plugin, "core_upgrade_t2");
+        ShapedRecipe t2Recipe = new ShapedRecipe(t2Key, t2Core);
+        t2Recipe.shape("ABA", "CDC", "ABA");
+        t2Recipe.setIngredient('A', Material.DIAMOND_BLOCK);
+        t2Recipe.setIngredient('B', Material.TOTEM_OF_UNDYING);
+        t2Recipe.setIngredient('C', Material.NETHER_STAR);
+        t2Recipe.setIngredient('D', Material.PAPER); // Placeholder for T1 core (NBT check in event)
+        Bukkit.addRecipe(t2Recipe);
 
-        CoreType type = coreManager.getCoreType(coreItem);
-        int tier = coreManager.getCoreTier(coreItem);
-
-        // Check which recipe is being used
-        if (event.getRecipe() instanceof ShapedRecipe recipe) {
-            if (recipe.getKey().getKey().equals("upgrade_t1_t2")) {
-                if (tier == 1) {
-                    inv.setResult(coreManager.createCore(type, 2)); // Upgrade to T2
-                } else {
-                    inv.setResult(null); // Wrong tier
-                }
-            } else if (recipe.getKey().getKey().equals("upgrade_t2_t3")) {
-                if (tier == 2) {
-                    inv.setResult(coreManager.createCore(type, 3)); // Upgrade to T3
-                } else {
-                    inv.setResult(null); // Wrong tier
-                }
-            } else if (recipe.getKey().getKey().equals("element_caller")) {
-                // Allow if center is any core
-                inv.setResult(coreManager.createElementCaller());
-            }
-        }
+        // Upgrade T2 -> T3 Recipe
+        ItemStack t3Core = ElementalCoreItems.getExampleCore(3); // Replace with your method for T3 core
+        NamespacedKey t3Key = new NamespacedKey(plugin, "core_upgrade_t3");
+        ShapedRecipe t3Recipe = new ShapedRecipe(t3Key, t3Core);
+        t3Recipe.shape("ABA", "CDC", "ABA");
+        t3Recipe.setIngredient('A', Material.NETHERITE_BLOCK);
+        t3Recipe.setIngredient('B', Material.HEAVY_CORE);
+        t3Recipe.setIngredient('C', Material.NETHER_STAR);
+        t3Recipe.setIngredient('D', Material.PAPER); // Placeholder for T2 core (NBT check in event)
+        Bukkit.addRecipe(t3Recipe);
     }
 }
