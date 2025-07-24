@@ -52,7 +52,7 @@ public class AbilityListener implements Listener {
             switch (type) {
                 case EARTH -> earthPrison(player, radius, duration);
                 case WATER -> tsunamiSurge(player, radius, damage);
-                case FIRE -> meteorStrike(player, radius, damage, duration);  // Fixed: Added duration param
+                case FIRE -> meteorStrike(player, radius, damage, duration);
                 case AIR -> tornadoLaunch(player, radius);
                 case LIGHTNING -> stormcall(player, targets);
                 case ICE -> glacialSpike(player, duration, damage);
@@ -63,7 +63,7 @@ public class AbilityListener implements Listener {
         } else {
             // Shift+Right Click
             switch (type) {
-                case EARTH -> seismicSlam(player, radius, duration, damage);  // Fixed: Added damage param
+                case EARTH -> seismicSlam(player, radius, duration, damage);
                 case WATER -> aquaVortex(player, radius, duration, damage);
                 case FIRE -> infernalEruption(player, radius, duration, damage);
                 case AIR -> windBlade(player, damage, targets);
@@ -104,7 +104,7 @@ public class AbilityListener implements Listener {
         loc.getWorld().spawnParticle(Particle.DUST, loc, 50, new Particle.DustOptions(org.bukkit.Color.fromRGB(139, 90, 43), 1));
     }
 
-    private void seismicSlam(Player player, int radius, int duration, int damage) {  // Fixed: Added damage param
+    private void seismicSlam(Player player, int radius, int duration, int damage) {
         player.setVelocity(player.getLocation().getDirection().multiply(2).setY(1)); // Leap forward
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             Location loc = player.getLocation();
@@ -128,7 +128,7 @@ public class AbilityListener implements Listener {
         Vector dir = start.getDirection().multiply(radius);
         for (int i = 0; i < radius; i++) {
             Location waveLoc = start.clone().add(dir.clone().normalize().multiply(i));
-            waveLoc.getWorld().spawnParticle(Particle.SPLASH, waveLoc, 20);  // Fixed particle name
+            waveLoc.getWorld().spawnParticle(Particle.SPLASH, waveLoc, 20);
             for (Entity e : getNearbyEntities(waveLoc, 2)) {
                 if (e != player && e instanceof LivingEntity) {
                     e.setVelocity(dir.clone().normalize().multiply(1.5)); // Push
@@ -151,13 +151,13 @@ public class AbilityListener implements Listener {
                 ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, duration * 20, 0, false, false)); // Suffocate simulation (no air)
             }
         }
-        // Particles: bubble, splash (fixed)
+        // Particles: bubble, splash
         loc.getWorld().spawnParticle(Particle.BUBBLE, loc, 50);
         loc.getWorld().spawnParticle(Particle.SPLASH, loc, 50);
     }
 
     // Fire Abilities
-    private void meteorStrike(Player player, int radius, int damage, int duration) {  // Fixed: Added duration param
+    private void meteorStrike(Player player, int radius, int damage, int duration) {
         RayTraceResult ray = player.getWorld().rayTraceEntities(player.getEyeLocation(), player.getEyeLocation().getDirection(), 50, e -> e instanceof LivingEntity && e != player);
         Location targetLoc = (ray != null && ray.getHitEntity() != null) ? ray.getHitEntity().getLocation() : player.getEyeLocation().add(player.getEyeLocation().getDirection().multiply(20));
         FallingBlock meteor = targetLoc.getWorld().spawnFallingBlock(targetLoc.add(0, 10, 0), Material.FIRE.createBlockData());
@@ -190,7 +190,7 @@ public class AbilityListener implements Listener {
         // Create temporary fire blocks
         Random random = new Random();
         for (int i = 0; i < radius; i++) {
-            Location fireLoc = loc.clone().add(new Vector(random.nextDouble() * radius * 2 - radius, 0, random.nextDouble() * radius * 2 - radius));  // Fixed random vector
+            Location fireLoc = loc.clone().add(new Vector(random.nextDouble() * radius * 2 - radius, 0, random.nextDouble() * radius * 2 - radius));
             if (fireLoc.getBlock().getType() == Material.AIR) fireLoc.getBlock().setType(Material.FIRE);
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> fireLoc.getBlock().setType(Material.AIR), duration * 20L);
         }
@@ -312,7 +312,7 @@ public class AbilityListener implements Listener {
         // Visual roots (vines)
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
-            Location rootLoc = loc.clone().add(new Vector(random.nextDouble() * radius * 2 - radius, 0, random.nextDouble() * radius * 2 - radius));  // Fixed random vector
+            Location rootLoc = loc.clone().add(new Vector(random.nextDouble() * radius * 2 - radius, 0, random.nextDouble() * radius * 2 - radius));
             rootLoc.getBlock().setType(Material.VINE);
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> rootLoc.getBlock().setType(Material.AIR), duration * 20L);
         }
@@ -332,7 +332,7 @@ public class AbilityListener implements Listener {
         // Spawn thorns (cactus or something visual)
         Random random = new Random();
         for (int i = 0; i < 5; i++) {
-            Location thornLoc = loc.clone().add(new Vector(random.nextDouble() * (radius / 2) * 2 - (radius / 2), 0, random.nextDouble() * (radius / 2) * 2 - (radius / 2)));  // Fixed random vector
+            Location thornLoc = loc.clone().add(new Vector(random.nextDouble() * (radius / 2) * 2 - (radius / 2), 0, random.nextDouble() * (radius / 2) * 2 - (radius / 2)));
             thornLoc.getBlock().setType(Material.CACTUS);
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> thornLoc.getBlock().setType(Material.AIR), 100L);
         }
@@ -346,7 +346,7 @@ public class AbilityListener implements Listener {
         int clones = switch (tier) { case 1 -> 1; case 2 -> 2; default -> 3; };
         Random random = new Random();
         for (int i = 0; i < clones; i++) {
-            Location cloneLoc = player.getLocation().add(new Vector(random.nextDouble() * 4 - 2, 0, random.nextDouble() * 4 - 2));  // Fixed random vector
+            Location cloneLoc = player.getLocation().add(new Vector(random.nextDouble() * 4 - 2, 0, random.nextDouble() * 4 - 2));
             Zombie clone = (Zombie) player.getWorld().spawnEntity(cloneLoc, EntityType.ZOMBIE);
             clone.setCustomName("Shadow Clone");
             clone.setAI(false); // Distract only
@@ -387,14 +387,14 @@ public class AbilityListener implements Listener {
                 }
             }
         }
-        // Particles: glow, firework (fixed name)
+        // Particles: glow, firework
         start.getWorld().spawnParticle(Particle.GLOW, start, 50);
         start.getWorld().spawnParticle(Particle.FIREWORK, start, 50);
     }
 
     private void sanctuary(Player player, int radius, int duration) {
         Location loc = player.getLocation();
-        // Heal and protect allies (players/mobs near player - assuming "allies" are non-hostile or same team; simplify to nearby)
+        // Heal and protect allies (simplify to nearby)
         new org.bukkit.scheduler.BukkitRunnable() {
             int time = 0;
             @Override
@@ -416,7 +416,7 @@ public class AbilityListener implements Listener {
         }.runTaskTimer(plugin, 0L, 20L);
     }
 
-    // Helper methods (same as before)
+    // Helper methods
     private Entity getNearestEnemy(Player player, int radius) {
         Entity nearest = null;
         double dist = Double.MAX_VALUE;
