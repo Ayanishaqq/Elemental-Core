@@ -2,19 +2,15 @@ package com.elementalcores;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.NamespacedKey;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ElementalCoreItems {
 
-    // Core color hex codes
     private static final String[] CORE_TYPES = {
             "earth", "water", "fire", "air", "lightning", "ice", "nature", "shadow", "light"
     };
@@ -22,7 +18,6 @@ public class ElementalCoreItems {
             "#8B5A2B", "#1E90FF", "#FF4500", "#B0E0E6", "#FFFF00", "#00FFFF", "#228B22", "#4B0082", "#FFFACD"
     };
 
-    // Get a custom Elemental Core item
     public static ItemStack getElementalCore(String type, int tier) {
         int index = getCoreIndex(type);
         if (index == -1) index = 0; // fallback to earth
@@ -30,11 +25,9 @@ public class ElementalCoreItems {
         ItemStack item = new ItemStack(Material.PAPER);
         ItemMeta meta = item.getItemMeta();
 
-        // Set display name with hex color (using legacy color codes for compatibility)
         String name = ChatColor.translateAlternateColorCodes('&', "&" + getColorCode(index) + capitalize(type) + " Core (Tier " + tier + ")");
         meta.setDisplayName(name);
 
-        // Set lore
         List<String> lore = new ArrayList<>();
         lore.add(ChatColor.GRAY + getCoreLore(type));
         lore.add("");
@@ -47,7 +40,6 @@ public class ElementalCoreItems {
         lore.add(ChatColor.DARK_GRAY + "Tier " + tier + ": " + getTierDesc(tier));
         meta.setLore(lore);
 
-        // Set NBT tags
         meta.getPersistentDataContainer().set(NamespacedKeys.coreType(), PersistentDataType.STRING, type);
         meta.getPersistentDataContainer().set(NamespacedKeys.coreTier(), PersistentDataType.INTEGER, tier);
 
@@ -55,7 +47,10 @@ public class ElementalCoreItems {
         return item;
     }
 
-    // Get the Element Caller item
+    public static ItemStack getExampleCore(int tier) {
+        return getElementalCore("fire", tier); // Change "fire" to any core type for testing
+    }
+
     public static ItemStack getElementCaller() {
         ItemStack item = new ItemStack(Material.BLAZE_ROD);
         ItemMeta meta = item.getItemMeta();
@@ -67,7 +62,6 @@ public class ElementalCoreItems {
         return item;
     }
 
-    // Checks if item is a real Elemental Core (by NBT)
     public static boolean isRealElementalCore(ItemStack item) {
         if (item == null || item.getType() != Material.PAPER) return false;
         if (!item.hasItemMeta()) return false;
@@ -77,7 +71,6 @@ public class ElementalCoreItems {
         return type != null && tier != null && isValidCoreType(type) && tier >= 1 && tier <= 3;
     }
 
-    // Checks if item is the Element Caller
     public static boolean isElementCaller(ItemStack item) {
         if (item == null || item.getType() != Material.BLAZE_ROD) return false;
         if (!item.hasItemMeta()) return false;
@@ -85,7 +78,6 @@ public class ElementalCoreItems {
         return meta.hasDisplayName() && ChatColor.stripColor(meta.getDisplayName()).equalsIgnoreCase("Element Caller");
     }
 
-    // Helper: Get core index
     private static int getCoreIndex(String type) {
         for (int i = 0; i < CORE_TYPES.length; i++) {
             if (CORE_TYPES[i].equalsIgnoreCase(type)) return i;
@@ -93,19 +85,16 @@ public class ElementalCoreItems {
         return -1;
     }
 
-    // Helper: Capitalize
     private static String capitalize(String s) {
         if (s == null || s.isEmpty()) return s;
         return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
     }
 
-    // Helper: Is valid core type
     private static boolean isValidCoreType(String type) {
         for (String t : CORE_TYPES) if (t.equalsIgnoreCase(type)) return true;
         return false;
     }
 
-    // Helper: Core flavor lore
     private static String getCoreLore(String type) {
         switch (type.toLowerCase()) {
             case "earth": return "A core pulsing with the strength of stone.";
@@ -121,7 +110,6 @@ public class ElementalCoreItems {
         }
     }
 
-    // Helper: Ability names
     private static String getAbilityName(String type, int which) {
         switch (type.toLowerCase()) {
             case "earth": return which == 1 ? "Earth Prison" : "Seismic Slam";
@@ -137,7 +125,6 @@ public class ElementalCoreItems {
         }
     }
 
-    // Helper: Ability descriptions (per tier)
     private static String getAbilityDesc(String type, int which, int tier) {
         switch (type.toLowerCase()) {
             case "earth":
@@ -234,7 +221,6 @@ public class ElementalCoreItems {
         }
     }
 
-    // Helper: Passive effects
     private static String getPassive(String type) {
         switch (type.toLowerCase()) {
             case "earth": return "Resistance II, Haste I";
@@ -250,7 +236,6 @@ public class ElementalCoreItems {
         }
     }
 
-    // Helper: Tier descriptions
     private static String getTierDesc(int tier) {
         switch (tier) {
             case 1: return "Basic elemental power.";
@@ -260,28 +245,9 @@ public class ElementalCoreItems {
         }
     }
 
-    // Helper: Get legacy color code for display name (for compatibility)
     private static String getColorCode(int index) {
-        // You can map your hex colors to legacy codes for display name if needed
-        // Example: earth = &6, water = &9, fire = &c, air = &b, lightning = &e, ice = &b, nature = &2, shadow = &5, light = &f
         String[] codes = {"6", "9", "c", "b", "e", "b", "2", "5", "f"};
         if (index >= 0 && index < codes.length) return codes[index];
         return "f";
-    }
-
-        public class NamespacedKeys {
-            private static JavaPlugin plugin;
-
-        public static void setPlugin(JavaPlugin pl) {
-        plugin = pl;
-        }
-
-        public static NamespacedKey coreType() {
-            return new NamespacedKey(plugin, "core_type");
-        }
-
-        public static NamespacedKey coreTier() {
-        return new NamespacedKey(plugin, "core_tier");
-        }
     }
 }
