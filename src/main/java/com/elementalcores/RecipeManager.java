@@ -6,6 +6,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.RecipeChoice;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.NamespacedKey;
 
@@ -23,7 +24,7 @@ public class RecipeManager implements Listener {
         ShapedRecipe callerRecipe = new ShapedRecipe(new NamespacedKey(plugin, "element_caller"), coreManager.createElementCaller());
         callerRecipe.shape("DHD", "W E W", "DHD");  // Adjusted for 3x3
         callerRecipe.setIngredient('D', Material.DIAMOND_BLOCK);
-        callerRecipe.setIngredient('H', coreManager.createHeavyCore());
+        callerRecipe.setIngredient('H', new RecipeChoice.ExactChoice(coreManager.createHeavyCore()));  // Fixed: Use ExactChoice for custom ItemStack
         callerRecipe.setIngredient('W', Material.WITHER_SKELETON_SKULL);
         callerRecipe.setIngredient('E', Material.PAPER);  // Any core (NBT checked in event)
         plugin.getServer().addRecipe(callerRecipe);
@@ -41,8 +42,8 @@ public class RecipeManager implements Listener {
         ShapedRecipe t2ToT3 = new ShapedRecipe(new NamespacedKey(plugin, "upgrade_t2_t3"), new ItemStack(Material.PAPER));
         t2ToT3.shape("NHN", "N E N", "NHN");
         t2ToT3.setIngredient('N', Material.NETHERITE_BLOCK);
-        t2ToT3.setIngredient('H', coreManager.createHeavyCore());
-        t2ToT3.setIngredient('E', Material.NETHER_STAR);  // Wait, spec says Nether Star for 'N', Heavy Core for 'H', Core for center
+        t2ToT3.setIngredient('H', new RecipeChoice.ExactChoice(coreManager.createHeavyCore()));  // Fixed: Use ExactChoice for custom ItemStack
+        t2ToT3.setIngredient('E', Material.NETHER_STAR);
         t2ToT3.setIngredient('E', Material.PAPER);
         plugin.getServer().addRecipe(t2ToT3);
     }
