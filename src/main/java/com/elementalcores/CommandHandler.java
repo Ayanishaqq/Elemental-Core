@@ -56,17 +56,11 @@ public class CommandHandler implements CommandExecutor {
             sender.sendMessage(ChatColor.YELLOW + "Elemental Cores Info:");
             for (CoreType type : CoreType.values()) {
                 sender.sendMessage(ChatColor.BOLD + type.getName() + ":");
-                sender.sendMessage("Right Click: " + getAbilityName(type, false));
-                sender.sendMessage("Shift+Right Click: " + getAbilityName(type, true));
-                sender.sendMessage("Passive: " + type.getPassive1().getName() + ", " + type.getPassive2().getName());
+                sender.sendMessage("Right Click: " + coreManager.getRightClickAbilityName(type));
+                sender.sendMessage("Shift+Right Click: " + coreManager.getShiftRightClickAbilityName(type));
+                sender.sendMessage("Passive: " + type.getPassive1() + ", " + type.getPassive2());
             }
         }
         return true;
-    }
-
-    private String getAbilityName(CoreType type, boolean shift) {
-        // Similar to CoreManager
-        if (!shift) return coreManager.getRightClickAbilityName(type); // Use method from CoreManager
-        return coreManager.getShiftRightClickAbilityName(type);
     }
 }
