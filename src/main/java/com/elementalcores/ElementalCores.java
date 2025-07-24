@@ -26,6 +26,8 @@ import org.bukkit.Particle;
 import org.bukkit.block.Block;
 import org.bukkit.World;
 import org.bukkit.enchantments.Enchantment;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 
 import java.util.*;
 
@@ -37,6 +39,14 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private NamespacedKey coreKey;
     private NamespacedKey tierKey;
     private RecipeManager recipeManager;
+    
+    // Updated for 1.21.5: Reference to potion effect types and particles
+    private final PotionEffectType RESISTANCE = PotionEffectType.getByName("DAMAGE_RESISTANCE");
+    private final PotionEffectType HASTE = PotionEffectType.getByName("FAST_DIGGING");
+    private final PotionEffectType STRENGTH = PotionEffectType.getByName("INCREASE_DAMAGE");
+    private final PotionEffectType JUMP_BOOST = PotionEffectType.getByName("JUMP");
+    private final PotionEffectType SLOWNESS = PotionEffectType.getByName("SLOW");
+    private final PotionEffectType NAUSEA = PotionEffectType.getByName("CONFUSION");
     
     @Override
     public void onEnable() {
@@ -237,8 +247,8 @@ public class ElementalCores extends JavaPlugin implements Listener {
         
         switch (coreName.toLowerCase()) {
             case "earth":
-                player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 40, 2 + amplifier, true, false));
-                player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, 40, 1 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(RESISTANCE, 40, 2 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(HASTE, 40, 1 + amplifier, true, false));
                 break;
             case "water":
                 player.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 40, 0, true, false));
@@ -246,10 +256,10 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 break;
             case "fire":
                 player.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 40, 0, true, false));
-                player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 40, 1 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(STRENGTH, 40, 1 + amplifier, true, false));
                 break;
             case "air":
-                player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 40, 2 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(JUMP_BOOST, 40, 2 + amplifier, true, false));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 40, 0, true, false));
                 break;
             case "lightning":
@@ -257,7 +267,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 40, 0, true, false));
                 break;
             case "ice":
-                player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 40, 1 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(RESISTANCE, 40, 1 + amplifier, true, false));
                 // Frost Walker is an enchantment, not a potion effect
                 break;
             case "nature":
@@ -314,6 +324,11 @@ public class ElementalCores extends JavaPlugin implements Listener {
         return (int) ((cooldownEnd - System.currentTimeMillis()) / 1000);
     }
     
+    // Updated for 1.21.5: sendActionBar using Spigot API
+    private void sendActionBar(Player player, String message) {
+        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
+    }
+    
     private void useNormalAbility(Player player, String coreName) {
         String abilityName = "";
         int cooldown = getConfig().getInt("cooldowns.normal", 12);
@@ -331,7 +346,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "earth":
                 abilityName = "Earth Fortress";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 earthFortress(player, tier);
@@ -341,7 +356,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "water":
                 abilityName = "Tidal Wave";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 tidalWave(player, tier);
@@ -351,7 +366,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "fire":
                 abilityName = "Inferno Meteor";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 infernoMeteor(player, tier);
@@ -361,7 +376,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "air":
                 abilityName = "Hurricane Leap";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 hurricaneLeap(player, tier);
@@ -371,7 +386,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "lightning":
                 abilityName = "Thunderstorm";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 thunderstorm(player, tier);
@@ -381,7 +396,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "ice":
                 abilityName = "Glacial Prison";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 glacialPrison(player, tier);
@@ -391,7 +406,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "nature":
                 abilityName = "Nature's Embrace";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 naturesEmbrace(player, tier);
@@ -401,7 +416,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "shadow":
                 abilityName = "Shadow Clone Army";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 shadowCloneArmy(player, tier);
@@ -411,7 +426,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "light":
                 abilityName = "Solar Flare";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 solarFlare(player, tier);
@@ -437,7 +452,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "earth":
                 abilityName = "Earthquake";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 earthquake(player, tier);
@@ -447,7 +462,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "water":
                 abilityName = "Maelstrom";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 maelstrom(player, tier);
@@ -457,7 +472,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "fire":
                 abilityName = "Ring of Fire";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 ringOfFire(player, tier);
@@ -467,7 +482,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "air":
                 abilityName = "Cyclone";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 cyclone(player, tier);
@@ -477,7 +492,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "lightning":
                 abilityName = "Lightning Dash";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 lightningDash(player, tier);
@@ -487,7 +502,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "ice":
                 abilityName = "Blizzard";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 blizzard(player, tier);
@@ -497,7 +512,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "nature":
                 abilityName = "Thornfield";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 thornfield(player, tier);
@@ -507,7 +522,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "shadow":
                 abilityName = "Void Step";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 voidStep(player, tier);
@@ -517,7 +532,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             case "light":
                 abilityName = "Sanctuary";
                 if (isOnCooldown(player, abilityName)) {
-                    player.sendActionBar(ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
                 sanctuary(player, tier);
@@ -567,7 +582,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         }
         
         player.getWorld().playSound(center, Sound.BLOCK_STONE_PLACE, 1.0f, 0.5f);
-        player.getWorld().spawnParticle(Particle.BLOCK_CRACK, center, 100, 2, 2, 2, Material.STONE.createBlockData());
+        player.getWorld().spawnParticle(Particle.FALLING_DUST, center, 100, 2, 2, 2); // Changed to FALLING_DUST
         
         // Remove blocks after 7 seconds
         new BukkitRunnable() {
@@ -575,7 +590,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             public void run() {
                 for (Block block : placedBlocks) {
                     block.setType(Material.AIR);
-                    block.getWorld().spawnParticle(Particle.BLOCK_CRACK, block.getLocation(), 10, 0.5, 0.5, 0.5, block.getBlockData());
+                    block.getWorld().spawnParticle(Particle.FALLING_DUST, block.getLocation(), 10, 0.5, 0.5, 0.5);
                 }
             }
         }.runTaskLater(this, 140); // 7 seconds
@@ -593,7 +608,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 LivingEntity living = (LivingEntity) entity;
                 if (canPvP(player, living)) {
                     living.damage(damage, player);
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 2));
+                    living.addPotionEffect(new PotionEffect(SLOWNESS, 100, 2));
                     
                     // Shake effect
                     Location loc = living.getLocation();
@@ -609,7 +624,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     if (Math.sqrt(x*x + z*z) <= 10) {
                         Block block = center.clone().add(x, y, z).getBlock();
                         Material type = block.getType();
-                        if (type == Material.GRASS || type == Material.TALL_GRASS || 
+                        if (type == Material.SHORT_GRASS || type == Material.TALL_GRASS || // Updated Material
                             type.name().contains("LEAVES") || type.name().contains("FLOWER")) {
                             block.breakNaturally();
                         }
@@ -619,7 +634,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         }
         
         world.playSound(center, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 2.0f, 0.5f);
-        world.spawnParticle(Particle.EXPLOSION_LARGE, center, 20, 5, 1, 5);
+        world.spawnParticle(Particle.EXPLOSION, center, 20, 5, 1, 5); // Changed to EXPLOSION
     }
     
     // Water Abilities
@@ -716,7 +731,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     double x = Math.cos(angle + ticks * 0.1) * 5;
                     double z = Math.sin(angle + ticks * 0.1) * 5;
                     Location particleLoc = center.clone().add(x, ticks * 0.1, z);
-                    player.getWorld().spawnParticle(Particle.WATER_BUBBLE, particleLoc, 5, 0.2, 0.2, 0.2);
+                    player.getWorld().spawnParticle(Particle.BUBBLE_COLUMN_UP, particleLoc, 5, 0.2, 0.2, 0.2); // Changed to BUBBLE_COLUMN_UP
                 }
                 
                 // Pull and damage trapped entities
@@ -869,7 +884,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     // Landing impact
                     Location impact = player.getLocation();
                     impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
-                    impact.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, impact, 10, 2, 0, 2);
+                    impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 10, 2, 0, 2); // Changed to EXPLOSION
                     
                     // Damage and knockback
                     for (Entity entity : player.getNearbyEntities(5, 5, 5)) {
@@ -978,7 +993,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                         ((LivingEntity) target).damage(damage, player);
                         
                         // Stun effect (slowness and weakness)
-                        ((LivingEntity) target).addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 10));
+                        ((LivingEntity) target).addPotionEffect(new PotionEffect(SLOWNESS, 40, 10));
                         ((LivingEntity) target).addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 40, 10));
                     }
                 }
@@ -1015,7 +1030,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     LivingEntity living = (LivingEntity) entity;
                     if (canPvP(player, living)) {
                         living.damage(damage, player);
-                        living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 10));
+                        living.addPotionEffect(new PotionEffect(SLOWNESS, 40, 10));
                         current.getWorld().strikeLightningEffect(living.getLocation());
                     }
                 }
@@ -1056,14 +1071,14 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     }
                     
                     // Immobilize
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 255));
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 100, 128));
+                    living.addPotionEffect(new PotionEffect(SLOWNESS, 100, 255));
+                    living.addPotionEffect(new PotionEffect(JUMP_BOOST, 100, 128));
                 }
             }
         }
         
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, 2.0f, 2.0f);
-        player.getWorld().spawnParticle(Particle.SNOW_SHOVEL, player.getLocation(), 100, 3, 3, 3);
+        player.getWorld().spawnParticle(Particle.SNOWFLAKE, player.getLocation(), 100, 3, 3, 3); // Changed to SNOWFLAKE
         
         // Thaw after 5 seconds
         new BukkitRunnable() {
@@ -1080,7 +1095,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                                     Block block = loc.clone().add(x, y, z).getBlock();
                                     if (block.getType() == Material.ICE) {
                                         block.setType(Material.AIR);
-                                        block.getWorld().spawnParticle(Particle.BLOCK_CRACK, block.getLocation(), 10, 0.5, 0.5, 0.5, Material.ICE.createBlockData());
+                                        block.getWorld().spawnParticle(Particle.FALLING_DUST, block.getLocation(), 10, 0.5, 0.5, 0.5); // Changed to FALLING_DUST
                                     }
                                 }
                             }
@@ -1115,7 +1130,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     double y = Math.random() * 5;
                     double z = (Math.random() - 0.5) * 20;
                     Location particleLoc = center.clone().add(x, y, z);
-                    center.getWorld().spawnParticle(Particle.SNOWBALL, particleLoc, 1, 0, -0.5, 0);
+                    center.getWorld().spawnParticle(Particle.SNOWFLAKE, particleLoc, 1, 0, -0.5, 0); // Changed to SNOWFLAKE
                 }
                 
                 // Damage and slow enemies
@@ -1125,7 +1140,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                             LivingEntity living = (LivingEntity) entity;
                             if (canPvP(player, living)) {
                                 living.damage(damage, player);
-                                living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 3));
+                                living.addPotionEffect(new PotionEffect(SLOWNESS, 40, 3));
                             }
                         }
                     }
@@ -1155,9 +1170,9 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 // Remove negative effects
                 for (PotionEffect effect : ally.getActivePotionEffects()) {
                     PotionEffectType type = effect.getType();
-                    if (type == PotionEffectType.POISON || type == PotionEffectType.WITHER ||
-                        type == PotionEffectType.SLOW || type == PotionEffectType.WEAKNESS ||
-                        type == PotionEffectType.BLINDNESS || type == PotionEffectType.CONFUSION) {
+                    if (type.equals(PotionEffectType.POISON) || type.equals(PotionEffectType.WITHER) ||
+                        type.equals(SLOWNESS) || type.equals(PotionEffectType.WEAKNESS) ||
+                        type.equals(PotionEffectType.BLINDNESS) || type.equals(NAUSEA)) {
                         ally.removePotionEffect(type);
                     }
                 }
@@ -1170,7 +1185,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         player.setHealth(Math.min(player.getHealth() + healing, player.getMaxHealth()));
         
         center.getWorld().playSound(center, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
-        center.getWorld().spawnParticle(Particle.VILLAGER_HAPPY, center, 100, 5, 2, 5);
+        center.getWorld().spawnParticle(Particle.COMPOSTER, center, 100, 5, 2, 5); // Changed to COMPOSTER
     }
     
     private void thornfield(Player player, int tier) {
@@ -1204,8 +1219,8 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 LivingEntity living = (LivingEntity) entity;
                 if (canPvP(player, living)) {
                     rooted.add(living);
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 80, 255));
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 80, 128));
+                    living.addPotionEffect(new PotionEffect(SLOWNESS, 80, 255));
+                    living.addPotionEffect(new PotionEffect(JUMP_BOOST, 80, 128));
                 }
             }
         }
@@ -1225,7 +1240,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 
                 // Show thorns
                 for (Location loc : thornLocations) {
-                    loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, loc, 2, 0.2, 0.5, 0.2, Material.OAK_LEAVES.createBlockData());
+                    loc.getWorld().spawnParticle(Particle.FALLING_DUST, loc, 2, 0.2, 0.5, 0.2); // Changed to FALLING_DUST
                 }
                 
                 // Damage rooted enemies
@@ -1262,12 +1277,12 @@ public class ElementalCores extends JavaPlugin implements Listener {
             clone.setBaby(false);
             clone.setHealth(20.0);
             clone.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200, 1));
-            clone.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 200, (int)(damage / 2)));
+            clone.addPotionEffect(new PotionEffect(STRENGTH, 200, (int)(damage / 2)));
             
             clones.add(clone);
             
             // Spawn effect
-            spawnLoc.getWorld().spawnParticle(Particle.SMOKE_LARGE, spawnLoc, 20, 0.5, 1, 0.5);
+            spawnLoc.getWorld().spawnParticle(Particle.SMOKE_NORMAL, spawnLoc, 20, 0.5, 1, 0.5); // Changed to SMOKE_NORMAL
         }
         
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
@@ -1284,7 +1299,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     // Remove clones
                     for (Entity clone : clones) {
                         if (clone.isValid()) {
-                            clone.getWorld().spawnParticle(Particle.SMOKE_LARGE, clone.getLocation(), 20, 0.5, 1, 0.5);
+                            clone.getWorld().spawnParticle(Particle.SMOKE_NORMAL, clone.getLocation(), 20, 0.5, 1, 0.5); // Changed to SMOKE_NORMAL
                             clone.remove();
                         }
                     }
@@ -1331,7 +1346,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         double damage = 3.0 * multiplier;
         
         // Create darkness cloud at start
-        start.getWorld().spawnParticle(Particle.SMOKE_LARGE, start, 100, 2, 2, 2);
+        start.getWorld().spawnParticle(Particle.SMOKE_NORMAL, start, 100, 2, 2, 2); // Changed to SMOKE_NORMAL
         
         // Blind and wither enemies at start location
         for (Entity entity : start.getWorld().getNearbyEntities(start, 5, 5, 5)) {
@@ -1348,7 +1363,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         player.teleport(target);
         
         // Create darkness cloud at target
-        target.getWorld().spawnParticle(Particle.SMOKE_LARGE, target, 100, 2, 2, 2);
+        target.getWorld().spawnParticle(Particle.SMOKE_NORMAL, target, 100, 2, 2, 2); // Changed to SMOKE_NORMAL
         
         player.getWorld().playSound(start, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
         player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
@@ -1578,8 +1593,8 @@ public class ElementalCores extends JavaPlugin implements Listener {
         meta.getPersistentDataContainer().set(coreKey, PersistentDataType.STRING, coreName.toLowerCase());
         meta.getPersistentDataContainer().set(tierKey, PersistentDataType.INTEGER, tier);
         
-        // Add special effect for visual flair
-        meta.addEnchant(Enchantment.DURABILITY, 1, true);
+        // Add special effect for visual flair - updated for 1.21.5
+        meta.addEnchant(Enchantment.UNBREAKING, 1, true);
         
         core.setItemMeta(meta);
         return core;
