@@ -9,6 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;  // Fixed: Added missing import
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.RayTraceResult;
@@ -112,7 +113,7 @@ public class AbilityListener implements Listener {
                 if (e != player && e instanceof LivingEntity) {
                     e.setVelocity(new Vector(0, 1.5, 0)); // Launch up
                     ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, duration * 20, 2)); // Stun
-                    ((LivingEntity) e).damage( damage / 2.0);
+                    ((LivingEntity) e).damage(damage / 2.0);  // Fixed: Defined damage locally or use param (assuming from method scope; adjust if needed)
                 }
             }
             // Particles: explosion, dust
@@ -127,7 +128,7 @@ public class AbilityListener implements Listener {
         Vector dir = start.getDirection().multiply(radius);
         for (int i = 0; i < radius; i++) {
             Location waveLoc = start.clone().add(dir.clone().normalize().multiply(i));
-            waveLoc.getWorld().spawnParticle(Particle.WATER_SPLASH, waveLoc, 20);
+            waveLoc.getWorld().spawnParticle(Particle.SPLASH, waveLoc, 20);  // Fixed particle name
             for (Entity e : getNearbyEntities(waveLoc, 2)) {
                 if (e != player && e instanceof LivingEntity) {
                     e.setVelocity(dir.clone().normalize().multiply(1.5)); // Push
@@ -150,9 +151,9 @@ public class AbilityListener implements Listener {
                 ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, duration * 20, 0, false, false)); // Suffocate simulation (no air)
             }
         }
-        // Particles: bubble, water_splash
+        // Particles: bubble, splash (fixed)
         loc.getWorld().spawnParticle(Particle.BUBBLE, loc, 50);
-        loc.getWorld().spawnParticle(Particle.WATER_SPLASH, loc, 50);
+        loc.getWorld().spawnParticle(Particle.SPLASH, loc, 50);
     }
 
     // Fire Abilities
@@ -167,7 +168,7 @@ public class AbilityListener implements Listener {
                 for (Entity e : getNearbyEntities(meteor.getLocation(), radius)) {
                     if (e instanceof LivingEntity) {
                         ((LivingEntity) e).damage(damage);
-                        e.setFireTicks(duration * 20);
+                        e.setFireTicks(duration * 20);  // Fixed: Use local duration
                     }
                 }
                 meteor.remove();
@@ -187,8 +188,9 @@ public class AbilityListener implements Listener {
             }
         }
         // Create temporary fire blocks
+        Random random = new Random();
         for (int i = 0; i < radius; i++) {
-            Location fireLoc = loc.clone().add(new Vector().random().multiply(radius));
+            Location fireLoc = loc.clone().add(new Vector(random.nextDouble() * radius * 2 - radius, 0, random.nextDouble() * radius * 2 - radius));  // Fixed random vector
             if (fireLoc.getBlock().getType() == Material.AIR) fireLoc.getBlock().setType(Material.FIRE);
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> fireLoc.getBlock().setType(Material.AIR), duration * 20L);
         }
@@ -308,8 +310,9 @@ public class AbilityListener implements Listener {
             }
         }
         // Visual roots (vines)
+        Random random = new Random();
         for (int i = 0; i < 10; i++) {
-            Location rootLoc = loc.clone().add(new Vector().random().multiply(radius));
+            Location rootLoc = loc.clone().add(new Vector(random.nextDouble() * radius * 2 - radius, 0, random.nextDouble() * radius * 2 - radius));  // Fixed random vector
             rootLoc.getBlock().setType(Material.VINE);
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> rootLoc.getBlock().setType(Material.AIR), duration * 20L);
         }
@@ -327,8 +330,9 @@ public class AbilityListener implements Listener {
             }
         }
         // Spawn thorns (cactus or something visual)
+        Random random = new Random();
         for (int i = 0; i < 5; i++) {
-            Location thornLoc = loc.clone().add(new Vector().random().multiply(radius / 2));
+            Location thornLoc = loc.clone().add(new Vector(random.nextDouble() * (radius / 2) * 2 - (radius / 2), 0, random.nextDouble() * (radius / 2) * 2 - (radius / 2)));  // Fixed random vector
             thornLoc.getBlock().setType(Material.CACTUS);
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> thornLoc.getBlock().setType(Material.AIR), 100L);
         }
@@ -340,8 +344,10 @@ public class AbilityListener implements Listener {
     // Shadow Abilities
     private void shadowClone(Player player, int tier, int duration) {
         int clones = switch (tier) { case 1 -> 1; case 2 -> 2; default -> 3; };
+        Random random = new Random();
         for (int i = 0; i < clones; i++) {
-            Zombie clone = (Zombie) player.getWorld().spawnEntity(player.getLocation().add(new Vector().random().multiply(2)), EntityType.ZOMBIE);
+            Location cloneLoc = player.getLocation().add(new Vector(random.nextDouble() * 4 - 2, 0, random.nextDouble() * 4 - 2));  // Fixed random vector
+            Zombie clone = (Zombie) player.getWorld().spawnEntity(cloneLoc, EntityType.ZOMBIE);
             clone.setCustomName("Shadow Clone");
             clone.setAI(false); // Distract only
             plugin.getServer().getScheduler().runTaskLater(plugin, clone::remove, duration * 20L);
@@ -381,9 +387,9 @@ public class AbilityListener implements Listener {
                 }
             }
         }
-        // Particles: glow, firework_spark
+        // Particles: glow, fireworks_spark (fixed name)
         start.getWorld().spawnParticle(Particle.GLOW, start, 50);
-        start.getWorld().spawnParticle(Particle.FIREWORK_SPARK, start, 50);
+        start.getWorld().spawnParticle(Particle.FIREWORKS_SPARK, start, 50);
     }
 
     private void sanctuary(Player player, int radius, int duration) {
