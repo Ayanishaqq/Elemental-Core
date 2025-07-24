@@ -58,7 +58,7 @@ public class CommandHandler implements CommandExecutor {
                 sender.sendMessage(ChatColor.BOLD + type.getName() + ":");
                 sender.sendMessage("Right Click: " + coreManager.getRightClickAbilityName(type));
                 sender.sendMessage("Shift+Right Click: " + coreManager.getShiftRightClickAbilityName(type));
-                sender.sendMessage("Passive: " + type.getPassive1() + ", " + type.getPassive2());
+                sender.sendMessage("Passive: " + (type.getPassive1() != null ? type.getPassive1().getName() : "") + ", " + (type.getPassive2() != null ? type.getPassive2().getName() : ""));
             }
         }
         return true;
