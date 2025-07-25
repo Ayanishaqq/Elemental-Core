@@ -14,6 +14,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.block.Action;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.potion.PotionEffect;
@@ -26,6 +28,7 @@ import org.bukkit.Particle;
 import org.bukkit.block.Block;
 import org.bukkit.World;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.event.EventPriority;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 
@@ -40,7 +43,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private NamespacedKey tierKey;
     private RecipeManager recipeManager;
     
-    // Updated for 1.21.5: Reference to potion effect types and particles
+    // Reference to potion effect types for compatibility
     private final PotionEffectType RESISTANCE = PotionEffectType.getByName("DAMAGE_RESISTANCE");
     private final PotionEffectType HASTE = PotionEffectType.getByName("FAST_DIGGING");
     private final PotionEffectType STRENGTH = PotionEffectType.getByName("INCREASE_DAMAGE");
@@ -60,6 +63,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         // Register recipes
         recipeManager = new RecipeManager(this);
         recipeManager.registerRecipes();
+        recipeManager.registerUpgradeRecipes();
         
         // Start passive effects checker
         startPassiveEffects();
@@ -127,6 +131,23 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 sender.sendMessage(ChatColor.GREEN + "Gave " + coreName + " core (Tier " + tier + ") to " + target.getName());
                 return true;
             }
+            
+            if (args[0].equalsIgnoreCase("caller") && sender.hasPermission("elementalcores.admin")) {
+                if (args.length < 2) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /core caller <player>");
+                    return true;
+                }
+                
+                Player target = getServer().getPlayer(args[1]);
+                if (target == null) {
+                    sender.sendMessage(ChatColor.RED + "Player not found!");
+                    return true;
+                }
+                
+                giveElementCaller(target);
+                sender.sendMessage(ChatColor.GREEN + "Gave Element Caller to " + target.getName());
+                return true;
+            }
         }
         return false;
     }
@@ -144,24 +165,83 @@ public class ElementalCores extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInOffHand();
         
-        if (item == null || item.getType() != Material.PAPER) return;
-        if (!item.hasItemMeta()) return;
-        
-        ItemMeta meta = item.getItemMeta();
-        if (!meta.getPersistentDataContainer().has(coreKey, PersistentDataType.STRING)) return;
-        
-        String coreName = meta.getPersistentDataContainer().get(coreKey, PersistentDataType.STRING);
-        
-        if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            event.setCancelled(true);
-            
-            if (player.isSneaking()) {
-                useShiftAbility(player, coreName);
-            } else {
-                useNormalAbility(player, coreName);
+        // Check for core use
+        ItemStack offhand = player.getInventory().getItemInOffHand();
+        if (offhand != null && offhand.getType() == Material.PAPER && offhand.hasItemMeta()) {
+            ItemMeta meta = offhand.getItemMeta();
+            if (meta.getPersistentDataContainer().has(coreKey, PersistentDataType.STRING)) {
+                String coreName = meta.getPersistentDataContainer().get(coreKey, PersistentDataType.STRING);
+                
+                if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                    event.setCancelled(true);
+                    
+                    if (player.isSneaking()) {
+                        useShiftAbility(player, coreName);
+                    } else {
+                        useNormalAbility(player, coreName);
+                    }
+                }
+                
+                return;
             }
+        }
+        
+        // Check for Element Caller use
+        ItemStack mainhand = player.getInventory().getItemInMainHand();
+        if (mainhand != null && mainhand.getType() == Material.HEART_OF_THE_SEA && mainhand.hasItemMeta()) {
+            ItemMeta meta = mainhand.getItemMeta();
+            if (meta.hasDisplayName() && meta.getDisplayName().equals(ChatColor.GOLD + "Element Caller")) {
+                if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                    event.setCancelled(true);
+                    useElementCaller(player, mainhand);
+                }
+            }
+        }
+    }
+    
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        // Prevent dropping cores
+        Item droppedItem = event.getItemDrop();
+        ItemStack itemStack = droppedItem.getItemStack();
+        
+        if (isElementalCore(itemStack)) {
+            event.setCancelled(true);
+            Player player = event.getPlayer();
+            player.sendMessage(ChatColor.RED + "You cannot drop Elemental Cores!");
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        List<ItemStack> drops = event.getDrops();
+        List<ItemStack> coresToSave = new ArrayList<>();
+        
+        // Find and remove cores from drops
+        Iterator<ItemStack> iterator = drops.iterator();
+        while (iterator.hasNext()) {
+            ItemStack item = iterator.next();
+            if (isElementalCore(item)) {
+                coresToSave.add(item.clone());
+                iterator.remove();
+            }
+        }
+        
+        // If we found any cores, restore them after respawn
+        if (!coresToSave.isEmpty()) {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (player.isOnline()) {
+                        for (ItemStack core : coresToSave) {
+                            player.getInventory().addItem(core);
+                        }
+                        player.sendMessage(ChatColor.GREEN + "Your Elemental Cores have been returned to you!");
+                    }
+                }
+            }.runTaskLater(this, 20); // Run 1 second after respawn
         }
     }
     
@@ -207,7 +287,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private void giveCore(Player player, String coreName, int tier) {
         // Remove any existing cores
         for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() == Material.PAPER && item.hasItemMeta()) {
+            if (item != null && item.hasItemMeta()) {
                 ItemMeta meta = item.getItemMeta();
                 if (meta.getPersistentDataContainer().has(coreKey, PersistentDataType.STRING)) {
                     player.getInventory().remove(item);
@@ -218,6 +298,68 @@ public class ElementalCores extends JavaPlugin implements Listener {
         ItemStack core = createCoreItem(coreName, tier);
         player.getInventory().addItem(core);
         player.sendMessage(ChatColor.GREEN + "You received a " + core.getItemMeta().getDisplayName() + ChatColor.GREEN + "!");
+    }
+    
+    private void giveElementCaller(Player player) {
+        ItemStack elementCaller = new ItemStack(Material.HEART_OF_THE_SEA);
+        ItemMeta meta = elementCaller.getItemMeta();
+        meta.setDisplayName(ChatColor.GOLD + "Element Caller");
+        meta.setLore(Arrays.asList(
+            ChatColor.GRAY + "Right-click while holding this item",
+            ChatColor.GRAY + "to transform your current core",
+            ChatColor.GRAY + "into a random one of the same tier.",
+            "",
+            ChatColor.RED + "Consumes this item when used!"
+        ));
+        elementCaller.setItemMeta(meta);
+        
+        player.getInventory().addItem(elementCaller);
+        player.sendMessage(ChatColor.GREEN + "You received an " + ChatColor.GOLD + "Element Caller" + ChatColor.GREEN + "!");
+    }
+    
+    private void useElementCaller(Player player, ItemStack elementCaller) {
+        // Check if player has a core
+        ItemStack currentCore = null;
+        int currentCoreTier = 1;
+        String currentCoreType = null;
+        
+        // Check inventory for any core
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (isElementalCore(item)) {
+                currentCore = item;
+                ItemMeta coreMeta = item.getItemMeta();
+                currentCoreTier = coreMeta.getPersistentDataContainer().get(tierKey, PersistentDataType.INTEGER);
+                currentCoreType = coreMeta.getPersistentDataContainer().get(coreKey, PersistentDataType.STRING);
+                break;
+            }
+        }
+        
+        if (currentCore == null) {
+            player.sendMessage(ChatColor.RED + "You need to have an Elemental Core to use the Element Caller!");
+            return;
+        }
+        
+        // Get all possible cores except current one
+        List<String> availableCores = new ArrayList<>(Arrays.asList(
+            "earth", "water", "fire", "air", "lightning", "ice", "nature", "shadow", "light"
+        ));
+        availableCores.remove(currentCoreType);
+        
+        // Choose a random new core
+        String newCoreType = availableCores.get(new Random().nextInt(availableCores.size()));
+        
+        // Remove current core and give new one
+        player.getInventory().remove(currentCore);
+        giveCore(player, newCoreType, currentCoreTier);
+        
+        // Consume Element Caller
+        elementCaller.setAmount(elementCaller.getAmount() - 1);
+        
+        // Effects
+        player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
+        player.getWorld().spawnParticle(Particle.SPELL_WITCH, player.getLocation().add(0, 1, 0), 50, 0.5, 1, 0.5);
+        
+        player.sendMessage(ChatColor.GREEN + "The Element Caller transforms your core into something new!");
     }
     
     private void startPassiveEffects() {
@@ -241,49 +383,57 @@ public class ElementalCores extends JavaPlugin implements Listener {
     }
     
     private void applyPassiveEffects(Player player, String coreName, int tier) {
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        int amplifier = (int) multiplier - 1;
-        if (amplifier < 0) amplifier = 0;
-        
         switch (coreName.toLowerCase()) {
             case "earth":
-                player.addPotionEffect(new PotionEffect(RESISTANCE, 40, 2 + amplifier, true, false));
-                player.addPotionEffect(new PotionEffect(HASTE, 40, 1 + amplifier, true, false));
+                if (tier >= 3) {
+                    player.addPotionEffect(new PotionEffect(RESISTANCE, 40, 1, true, false));
+                } else {
+                    player.addPotionEffect(new PotionEffect(RESISTANCE, 40, 0, true, false));
+                }
+                player.addPotionEffect(new PotionEffect(HASTE, 40, tier >= 2 ? 1 : 0, true, false));
                 break;
+                
             case "water":
                 player.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 40, 0, true, false));
-                player.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 40, 1 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 40, tier >= 3 ? 1 : 0, true, false));
                 break;
+                
             case "fire":
                 player.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 40, 0, true, false));
-                player.addPotionEffect(new PotionEffect(STRENGTH, 40, 1 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(STRENGTH, 40, tier >= 2 ? 1 : 0, true, false));
                 break;
+                
             case "air":
-                player.addPotionEffect(new PotionEffect(JUMP_BOOST, 40, 2 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(JUMP_BOOST, 40, 1, true, false));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 40, 0, true, false));
                 break;
+                
             case "lightning":
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, 2 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, tier >= 3 ? 1 : 0, true, false));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 40, 0, true, false));
                 break;
+                
             case "ice":
-                player.addPotionEffect(new PotionEffect(RESISTANCE, 40, 1 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(RESISTANCE, 40, tier >= 3 ? 1 : 0, true, false));
                 // Frost Walker is an enchantment, not a potion effect
                 break;
+                
             case "nature":
-                player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 40, 1 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 40, tier >= 3 ? 1 : 0, true, false));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 40, 0, true, false));
                 break;
+                
             case "shadow":
                 player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 40, 0, true, false));
-                // Add invisibility in bursts
-                if (player.getWorld().getTime() % 100 == 0) {
-                    player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 60, 0, true, false));
+                // Add invisibility in bursts, longer for higher tiers
+                if (player.getWorld().getTime() % (tier == 3 ? 60 : (tier == 2 ? 80 : 100)) == 0) {
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, tier * 20, 0, true, false));
                 }
                 break;
+                
             case "light":
                 player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 40, 0, true, false));
-                player.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 40, 1 + amplifier, true, false));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 40, tier >= 3 ? 1 : 0, true, false));
                 break;
         }
     }
@@ -324,14 +474,12 @@ public class ElementalCores extends JavaPlugin implements Listener {
         return (int) ((cooldownEnd - System.currentTimeMillis()) / 1000);
     }
     
-    // Updated for 1.21.5: sendActionBar using Spigot API
     private void sendActionBar(Player player, String message) {
         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
     }
     
     private void useNormalAbility(Player player, String coreName) {
         String abilityName = "";
-        int cooldown = getConfig().getInt("cooldowns.normal", 12);
         ItemStack offhand = player.getInventory().getItemInOffHand();
         int tier = 1;
         
@@ -340,6 +488,19 @@ public class ElementalCores extends JavaPlugin implements Listener {
             if (meta.getPersistentDataContainer().has(tierKey, PersistentDataType.INTEGER)) {
                 tier = meta.getPersistentDataContainer().get(tierKey, PersistentDataType.INTEGER);
             }
+        }
+        
+        // Get tier-specific cooldown
+        int cooldown;
+        switch (tier) {
+            case 3:
+                cooldown = 8;
+                break;
+            case 2:
+                cooldown = 10;
+                break;
+            default:
+                cooldown = 12;
         }
         
         switch (coreName.toLowerCase()) {
@@ -437,7 +598,6 @@ public class ElementalCores extends JavaPlugin implements Listener {
     
     private void useShiftAbility(Player player, String coreName) {
         String abilityName = "";
-        int cooldown = getConfig().getInt("cooldowns.shift", 18);
         ItemStack offhand = player.getInventory().getItemInOffHand();
         int tier = 1;
         
@@ -446,6 +606,19 @@ public class ElementalCores extends JavaPlugin implements Listener {
             if (meta.getPersistentDataContainer().has(tierKey, PersistentDataType.INTEGER)) {
                 tier = meta.getPersistentDataContainer().get(tierKey, PersistentDataType.INTEGER);
             }
+        }
+        
+        // Get tier-specific cooldown
+        int cooldown;
+        switch (tier) {
+            case 3:
+                cooldown = 12;
+                break;
+            case 2:
+                cooldown = 15;
+                break;
+            default:
+                cooldown = 18;
         }
         
         switch (coreName.toLowerCase()) {
@@ -547,18 +720,38 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private void earthFortress(Player player, int tier) {
         Location center = player.getLocation();
         List<Block> placedBlocks = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 6.0 * multiplier;
+        
+        // Get tier-specific values
+        int radius;
+        int duration;
+        double damage;
+        
+        switch (tier) {
+            case 3:
+                radius = 5;
+                duration = 7;
+                damage = 10.0;
+                break;
+            case 2:
+                radius = 4;
+                duration = 6;
+                damage = 8.0;
+                break;
+            default:
+                radius = 3;
+                duration = 5;
+                damage = 6.0;
+        }
         
         // Create walls
-        for (int x = -2; x <= 2; x++) {
-            for (int z = -2; z <= 2; z++) {
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
                 for (int y = 0; y <= 3; y++) {
-                    if (Math.abs(x) == 2 || Math.abs(z) == 2) {
+                    if (Math.abs(x) == radius || Math.abs(z) == radius) {
                         Location blockLoc = center.clone().add(x, y, z);
                         Block block = blockLoc.getBlock();
                         if (block.getType() == Material.AIR) {
-                            if (y == 0 || (Math.abs(x) == 2 && Math.abs(z) == 2)) {
+                            if (y == 0 || (Math.abs(x) == radius && Math.abs(z) == radius)) {
                                 block.setType(Material.OBSIDIAN);
                             } else {
                                 block.setType(Material.STONE);
@@ -571,7 +764,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         }
         
         // Launch and damage enemies inside
-        for (Entity entity : player.getNearbyEntities(5, 5, 5)) {
+        for (Entity entity : player.getNearbyEntities(radius + 2, radius + 2, radius + 2)) {
             if (entity instanceof LivingEntity && entity != player) {
                 LivingEntity living = (LivingEntity) entity;
                 if (canPvP(player, living)) {
@@ -582,9 +775,9 @@ public class ElementalCores extends JavaPlugin implements Listener {
         }
         
         player.getWorld().playSound(center, Sound.BLOCK_STONE_PLACE, 1.0f, 0.5f);
-        player.getWorld().spawnParticle(Particle.FALLING_DUST, center, 100, 2, 2, 2); // Changed to FALLING_DUST
+        player.getWorld().spawnParticle(Particle.FALLING_DUST, center, 100, radius, 2, radius);
         
-        // Remove blocks after 7 seconds
+        // Remove blocks after duration
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -593,39 +786,78 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     block.getWorld().spawnParticle(Particle.FALLING_DUST, block.getLocation(), 10, 0.5, 0.5, 0.5);
                 }
             }
-        }.runTaskLater(this, 140); // 7 seconds
+        }.runTaskLater(this, duration * 20); // Convert to ticks
     }
     
     private void earthquake(Player player, int tier) {
         Location center = player.getLocation();
         World world = player.getWorld();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 8.0 * multiplier;
+        
+        // Get tier-specific values
+        int radius;
+        int slowLevel;
+        double damage;
+        
+        switch (tier) {
+            case 3:
+                radius = 10;
+                slowLevel = 2;
+                damage = 10.0;
+                break;
+            case 2:
+                radius = 8;
+                slowLevel = 1;
+                damage = 8.0;
+                break;
+            default:
+                radius = 6;
+                slowLevel = 0;
+                damage = 6.0;
+        }
         
         // Shake effect and damage
-        for (Entity entity : player.getNearbyEntities(10, 10, 10)) {
+        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (entity instanceof LivingEntity && entity != player) {
                 LivingEntity living = (LivingEntity) entity;
                 if (canPvP(player, living)) {
                     living.damage(damage, player);
-                    living.addPotionEffect(new PotionEffect(SLOWNESS, 100, 2));
+                    living.addPotionEffect(new PotionEffect(SLOWNESS, 100, slowLevel));
                     
                     // Shake effect
                     Location loc = living.getLocation();
                     living.teleport(loc.add(Math.random() * 0.5 - 0.25, 0.1, Math.random() * 0.5 - 0.25));
+                    
+                    // Stun for tier 3
+                    if (tier == 3) {
+                        living.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 60, 0));
+                    }
                 }
             }
         }
         
-        // Break grass, leaves, and flowers
-        for (int x = -10; x <= 10; x++) {
+        // Break grass, leaves, and flowers - more types for higher tiers
+        for (int x = -radius; x <= radius; x++) {
             for (int y = -3; y <= 3; y++) {
-                for (int z = -10; z <= 10; z++) {
-                    if (Math.sqrt(x*x + z*z) <= 10) {
+                for (int z = -radius; z <= radius; z++) {
+                    if (Math.sqrt(x*x + z*z) <= radius) {
                         Block block = center.clone().add(x, y, z).getBlock();
                         Material type = block.getType();
-                        if (type == Material.SHORT_GRASS || type == Material.TALL_GRASS || // Updated Material
-                            type.name().contains("LEAVES") || type.name().contains("FLOWER")) {
+                        
+                        // Basic blocks for all tiers
+                        boolean breakBlock = type == Material.SHORT_GRASS || type == Material.TALL_GRASS;
+                        
+                        // Add more blocks for higher tiers
+                        if (tier >= 2) {
+                            breakBlock |= type.name().contains("LEAVES") || type.name().contains("FLOWER");
+                        }
+                        
+                        // Even more blocks for tier 3
+                        if (tier >= 3) {
+                            breakBlock |= type.name().contains("SAPLING") || type == Material.BROWN_MUSHROOM || 
+                                         type == Material.RED_MUSHROOM || type.name().contains("ROOTS");
+                        }
+                        
+                        if (breakBlock) {
                             block.breakNaturally();
                         }
                     }
@@ -634,27 +866,47 @@ public class ElementalCores extends JavaPlugin implements Listener {
         }
         
         world.playSound(center, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 2.0f, 0.5f);
-        world.spawnParticle(Particle.EXPLOSION, center, 20, 5, 1, 5); // Changed to EXPLOSION
+        world.spawnParticle(Particle.EXPLOSION, center, 20, radius/2, 1, radius/2);
     }
     
     // Water Abilities
     private void tidalWave(Player player, int tier) {
         Location start = player.getLocation();
         Vector direction = player.getLocation().getDirection().normalize();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 6.0 * multiplier;
+        
+        // Get tier-specific values
+        int distance;
+        double damage;
+        double pushFactor;
+        
+        switch (tier) {
+            case 3:
+                distance = 15;
+                damage = 8.0;
+                pushFactor = 2.0;
+                break;
+            case 2:
+                distance = 12;
+                damage = 6.0;
+                pushFactor = 1.7;
+                break;
+            default:
+                distance = 10;
+                damage = 4.0;
+                pushFactor = 1.5;
+        }
         
         new BukkitRunnable() {
-            int distance = 0;
+            int currentDistance = 0;
             
             @Override
             public void run() {
-                if (distance >= 15) {
+                if (currentDistance >= distance) {
                     this.cancel();
                     return;
                 }
                 
-                Location waveLoc = start.clone().add(direction.clone().multiply(distance));
+                Location waveLoc = start.clone().add(direction.clone().multiply(currentDistance));
                 
                 // Create wave effect
                 for (int y = 0; y <= 3; y++) {
@@ -673,7 +925,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                         LivingEntity living = (LivingEntity) entity;
                         if (canPvP(player, living)) {
                             living.damage(damage, player);
-                            living.setVelocity(direction.clone().multiply(1.5).setY(0.5));
+                            living.setVelocity(direction.clone().multiply(pushFactor).setY(0.5));
                         }
                     }
                 }
@@ -693,7 +945,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 }
                 
                 waveLoc.getWorld().playSound(waveLoc, Sound.ENTITY_PLAYER_SPLASH, 1.0f, 1.0f);
-                distance += 2;
+                currentDistance += 2;
             }
         }.runTaskTimer(this, 0, 2);
     }
@@ -701,11 +953,31 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private void maelstrom(Player player, int tier) {
         Location center = player.getLocation();
         List<Entity> trapped = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 2.0 * multiplier;
+        
+        // Get tier-specific values
+        int radius;
+        int duration;
+        double pullStrength;
+        
+        switch (tier) {
+            case 3:
+                radius = 8;
+                duration = 4;
+                pullStrength = 0.4;
+                break;
+            case 2:
+                radius = 7;
+                duration = 3;
+                pullStrength = 0.3;
+                break;
+            default:
+                radius = 5;
+                duration = 2;
+                pullStrength = 0.2;
+        }
         
         // Pull entities
-        for (Entity entity : player.getNearbyEntities(8, 8, 8)) {
+        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (entity instanceof LivingEntity && entity != player) {
                 if (canPvP(player, (LivingEntity) entity)) {
                     trapped.add(entity);
@@ -714,34 +986,41 @@ public class ElementalCores extends JavaPlugin implements Listener {
         }
         
         // Give player water breathing
-        player.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 100, 0));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, duration * 20, 0));
         
         new BukkitRunnable() {
             int ticks = 0;
             
             @Override
             public void run() {
-                if (ticks >= 80) { // 4 seconds
+                if (ticks >= duration * 20) {
                     this.cancel();
                     return;
                 }
                 
                 // Create vortex effect
                 for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
-                    double x = Math.cos(angle + ticks * 0.1) * 5;
-                    double z = Math.sin(angle + ticks * 0.1) * 5;
-                    Location particleLoc = center.clone().add(x, ticks * 0.1, z);
-                    player.getWorld().spawnParticle(Particle.BUBBLE_COLUMN_UP, particleLoc, 5, 0.2, 0.2, 0.2); // Changed to BUBBLE_COLUMN_UP
+                    double x = Math.cos(angle + ticks * 0.1) * radius;
+                    double z = Math.sin(angle + ticks * 0.1) * radius;
+                    Location particleLoc = center.clone().add(x, ticks * 0.05, z);
+                    player.getWorld().spawnParticle(Particle.BUBBLE_COLUMN_UP, particleLoc, 5, 0.2, 0.2, 0.2);
                 }
                 
-                // Pull and damage trapped entities
+                // Pull and drown trapped entities
                 for (Entity entity : trapped) {
                     if (entity.isValid()) {
-                        Vector pull = center.toVector().subtract(entity.getLocation().toVector()).normalize().multiply(0.3);
+                        Vector pull = center.toVector().subtract(entity.getLocation().toVector()).normalize().multiply(pullStrength);
                         entity.setVelocity(pull);
                         
-                        if (ticks % 20 == 0) { // Damage every second
-                            ((LivingEntity) entity).damage(damage, player);
+                        if (entity instanceof LivingEntity) {
+                            LivingEntity living = (LivingEntity) entity;
+                            
+                            // Apply drowning effect
+                            if (living.getRemainingAir() > 0) {
+                                living.setRemainingAir(living.getRemainingAir() - 10);
+                            } else {
+                                living.damage(1.0);
+                            }
                         }
                     }
                 }
@@ -756,12 +1035,33 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private void infernoMeteor(Player player, int tier) {
         Location target = player.getTargetBlock(null, 30).getLocation();
         Location spawn = target.clone().add(0, 20, 0);
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 10.0 * multiplier;
         
+        // Get tier-specific values
+        double damage;
+        int fireDuration;
+        double explosionPower;
+        
+        switch (tier) {
+            case 3:
+                damage = 10.0;
+                fireDuration = 7;
+                explosionPower = 3.0f;
+                break;
+            case 2:
+                damage = 8.0;
+                fireDuration = 6;
+                explosionPower = 2.5f;
+                break;
+            default:
+                damage = 6.0;
+                fireDuration = 5;
+                explosionPower = 2.0f;
+        }
+        
+        // Launch meteor
         Fireball meteor = player.getWorld().spawn(spawn, Fireball.class);
         meteor.setDirection(new Vector(0, -1, 0));
-        meteor.setYield(3.0f);
+        meteor.setYield((float)explosionPower);
         meteor.setIsIncendiary(true);
         meteor.setShooter(player);
         
@@ -773,7 +1073,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     
                     // Explosion effects
                     Location impact = meteor.getLocation();
-                    impact.getWorld().createExplosion(impact, 3.0f, true, false, player);
+                    impact.getWorld().createExplosion(impact, (float)explosionPower, true, false, player);
                     
                     // Damage and ignite
                     for (Entity entity : impact.getWorld().getNearbyEntities(impact, 5, 5, 5)) {
@@ -781,14 +1081,15 @@ public class ElementalCores extends JavaPlugin implements Listener {
                             LivingEntity living = (LivingEntity) entity;
                             if (canPvP(player, living)) {
                                 living.damage(damage, player);
-                                living.setFireTicks(140); // 7 seconds
+                                living.setFireTicks(fireDuration * 20);
                             }
                         }
                     }
                     
                     // Ignite ground
-                    for (int x = -3; x <= 3; x++) {
-                        for (int z = -3; z <= 3; z++) {
+                    int fireRadius = tier + 2; // 3, 4, or 5 blocks
+                    for (int x = -fireRadius; x <= fireRadius; x++) {
+                        for (int z = -fireRadius; z <= fireRadius; z++) {
                             Block block = impact.clone().add(x, 1, z).getBlock();
                             if (block.getType() == Material.AIR && block.getRelative(0, -1, 0).getType().isSolid()) {
                                 block.setType(Material.FIRE);
@@ -803,13 +1104,33 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private void ringOfFire(Player player, int tier) {
         Location center = player.getLocation();
         List<Location> fireLocations = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 1.0 * multiplier;
+        
+        // Get tier-specific values
+        int radius;
+        int duration;
+        double damage;
+        
+        switch (tier) {
+            case 3:
+                radius = 7;
+                duration = 6;
+                damage = 1.5;
+                break;
+            case 2:
+                radius = 6;
+                duration = 5;
+                damage = 1.0;
+                break;
+            default:
+                radius = 5;
+                duration = 4;
+                damage = 0.5;
+        }
         
         // Create ring
         for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 16) {
-            double x = Math.cos(angle) * 7;
-            double z = Math.sin(angle) * 7;
+            double x = Math.cos(angle) * radius;
+            double z = Math.sin(angle) * radius;
             Location fireLoc = center.clone().add(x, 0, z);
             
             // Find ground level
@@ -832,7 +1153,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             
             @Override
             public void run() {
-                if (ticks >= 100) { // 5 seconds
+                if (ticks >= duration * 20) { // Convert to ticks
                     this.cancel();
                     // Remove fire
                     for (Location loc : fireLocations) {
@@ -844,10 +1165,10 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 }
                 
                 // Check for entities inside ring
-                for (Entity entity : center.getWorld().getNearbyEntities(center, 7, 3, 7)) {
+                for (Entity entity : center.getWorld().getNearbyEntities(center, radius, 3, radius)) {
                     if (entity instanceof LivingEntity && entity != player) {
                         double distance = entity.getLocation().distance(center);
-                        if (distance <= 7) {
+                        if (distance <= radius) {
                             LivingEntity living = (LivingEntity) entity;
                             if (canPvP(player, living)) {
                                 living.damage(damage, player);
@@ -864,10 +1185,30 @@ public class ElementalCores extends JavaPlugin implements Listener {
     
     // Air Abilities
     private void hurricaneLeap(Player player, int tier) {
-        player.setVelocity(new Vector(0, 3, 0));
+        // Get tier-specific values
+        int height;
+        double damage;
+        double knockbackFactor;
+        
+        switch (tier) {
+            case 3:
+                height = 20;
+                damage = 10.0;
+                knockbackFactor = 2.5;
+                break;
+            case 2:
+                height = 15;
+                damage = 8.0;
+                knockbackFactor = 2.0;
+                break;
+            default:
+                height = 10;
+                damage = 6.0;
+                knockbackFactor = 1.5;
+        }
+        
+        player.setVelocity(new Vector(0, Math.min(3.0, height / 7.0), 0));
         player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 200, 0));
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 8.0 * multiplier;
         
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 2.0f, 1.0f);
         player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 50, 1, 1, 1);
@@ -884,7 +1225,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     // Landing impact
                     Location impact = player.getLocation();
                     impact.getWorld().playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
-                    impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 10, 2, 0, 2); // Changed to EXPLOSION
+                    impact.getWorld().spawnParticle(Particle.EXPLOSION, impact, 10, 2, 0, 2);
                     
                     // Damage and knockback
                     for (Entity entity : player.getNearbyEntities(5, 5, 5)) {
@@ -892,7 +1233,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                             LivingEntity living = (LivingEntity) entity;
                             if (canPvP(player, living)) {
                                 living.damage(damage, player);
-                                Vector knockback = living.getLocation().toVector().subtract(impact.toVector()).normalize().multiply(2).setY(0.5);
+                                Vector knockback = living.getLocation().toVector().subtract(impact.toVector()).normalize().multiply(knockbackFactor).setY(0.5);
                                 living.setVelocity(knockback);
                             }
                         }
@@ -906,15 +1247,35 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private void cyclone(Player player, int tier) {
         Location center = player.getLocation();
         List<Entity> lifted = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 2.0 * multiplier; // Fall damage multiplier
+        
+        // Get tier-specific values
+        int radius;
+        int liftHeight;
+        int duration;
+        
+        switch (tier) {
+            case 3:
+                radius = 8;
+                liftHeight = 10;
+                duration = 4;
+                break;
+            case 2:
+                radius = 7;
+                liftHeight = 8;
+                duration = 3;
+                break;
+            default:
+                radius = 5;
+                liftHeight = 6;
+                duration = 2;
+        }
         
         // Lift entities
-        for (Entity entity : player.getNearbyEntities(8, 8, 8)) {
+        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (entity instanceof LivingEntity && entity != player) {
                 if (canPvP(player, (LivingEntity) entity)) {
                     lifted.add(entity);
-                    entity.setVelocity(new Vector(0, 2, 0));
+                    entity.setVelocity(new Vector(0, 1.5, 0));
                 }
             }
         }
@@ -927,7 +1288,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             
             @Override
             public void run() {
-                if (ticks >= 60) { // 3 seconds
+                if (ticks >= duration * 20) {
                     this.cancel();
                     
                     // Drop entities
@@ -940,8 +1301,8 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 }
                 
                 // Particle effect
-                for (double y = 0; y <= 10; y += 0.5) {
-                    double radius = (10 - y) * 0.5;
+                for (double y = 0; y <= liftHeight; y += 0.5) {
+                    double radius = (liftHeight - y) * 0.5;
                     for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
                         double x = Math.cos(angle + ticks * 0.2) * radius;
                         double z = Math.sin(angle + ticks * 0.2) * radius;
@@ -952,7 +1313,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 
                 // Keep entities in air
                 for (Entity entity : lifted) {
-                    if (entity.isValid() && entity.getLocation().getY() < center.getY() + 8) {
+                    if (entity.isValid() && entity.getLocation().getY() < center.getY() + liftHeight) {
                         entity.setVelocity(entity.getVelocity().add(new Vector(0, 0.3, 0)));
                     }
                 }
@@ -965,11 +1326,35 @@ public class ElementalCores extends JavaPlugin implements Listener {
     // Lightning Abilities
     private void thunderstorm(Player player, int tier) {
         List<Entity> targets = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 8.0 * multiplier;
+        
+        // Get tier-specific values
+        int maxStrikes;
+        double damage;
+        int stunDuration;
+        int searchRadius;
+        
+        switch (tier) {
+            case 3:
+                maxStrikes = 7;
+                damage = 10.0;
+                stunDuration = 3;
+                searchRadius = 15;
+                break;
+            case 2:
+                maxStrikes = 5;
+                damage = 8.0;
+                stunDuration = 2;
+                searchRadius = 12;
+                break;
+            default:
+                maxStrikes = 3;
+                damage = 6.0;
+                stunDuration = 1;
+                searchRadius = 10;
+        }
         
         // Find targets
-        for (Entity entity : player.getNearbyEntities(15, 15, 15)) {
+        for (Entity entity : player.getNearbyEntities(searchRadius, searchRadius, searchRadius)) {
             if (entity instanceof LivingEntity && entity != player) {
                 if (canPvP(player, (LivingEntity) entity)) {
                     targets.add(entity);
@@ -977,9 +1362,9 @@ public class ElementalCores extends JavaPlugin implements Listener {
             }
         }
         
-        // Strike up to 7 random targets
+        // Strike random targets
         Collections.shuffle(targets);
-        int strikes = Math.min(7, targets.size());
+        int strikes = Math.min(maxStrikes, targets.size());
         
         for (int i = 0; i < strikes; i++) {
             Entity target = targets.get(i);
@@ -993,8 +1378,8 @@ public class ElementalCores extends JavaPlugin implements Listener {
                         ((LivingEntity) target).damage(damage, player);
                         
                         // Stun effect (slowness and weakness)
-                        ((LivingEntity) target).addPotionEffect(new PotionEffect(SLOWNESS, 40, 10));
-                        ((LivingEntity) target).addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 40, 10));
+                        ((LivingEntity) target).addPotionEffect(new PotionEffect(SLOWNESS, stunDuration * 20, 10));
+                        ((LivingEntity) target).addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, stunDuration * 20, 10));
                     }
                 }
             }.runTaskLater(this, i * 4); // Stagger the strikes
@@ -1004,11 +1389,31 @@ public class ElementalCores extends JavaPlugin implements Listener {
     }
     
     private void lightningDash(Player player, int tier) {
+        // Get tier-specific values
+        int distance;
+        double damage;
+        int stunDuration;
+        
+        switch (tier) {
+            case 3:
+                distance = 20;
+                damage = 8.0;
+                stunDuration = 2;
+                break;
+            case 2:
+                distance = 15;
+                damage = 6.0;
+                stunDuration = 1;
+                break;
+            default:
+                distance = 10;
+                damage = 4.0;
+                stunDuration = 1;
+        }
+        
         Location start = player.getLocation();
-        Vector direction = player.getLocation().getDirection().normalize();
-        Location end = start.clone().add(direction.multiply(20));
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 6.0 * multiplier;
+        Vector direction = player.getLocation().getDirection().normalize().multiply(distance);
+        Location end = start.clone().add(direction);
         
         // Check for safe landing
         while (!end.getBlock().getType().isSolid() && end.getY() > 0) {
@@ -1019,8 +1424,9 @@ public class ElementalCores extends JavaPlugin implements Listener {
         // Create lightning trail
         Vector step = direction.normalize().multiply(0.5);
         Location current = start.clone();
+        int steps = (int) (distance / 0.5);
         
-        for (int i = 0; i < 40; i++) {
+        for (int i = 0; i < steps; i++) {
             current.add(step);
             current.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, current, 10, 0.2, 0.2, 0.2);
             
@@ -1030,7 +1436,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     LivingEntity living = (LivingEntity) entity;
                     if (canPvP(player, living)) {
                         living.damage(damage, player);
-                        living.addPotionEffect(new PotionEffect(SLOWNESS, 40, 10));
+                        living.addPotionEffect(new PotionEffect(SLOWNESS, stunDuration * 20, 10));
                         current.getWorld().strikeLightningEffect(living.getLocation());
                     }
                 }
@@ -1045,11 +1451,31 @@ public class ElementalCores extends JavaPlugin implements Listener {
     
     // Ice Abilities
     private void glacialPrison(Player player, int tier) {
-        List<Entity> frozen = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 6.0 * multiplier;
+        // Get tier-specific values
+        int radius;
+        int duration;
+        double damage;
         
-        for (Entity entity : player.getNearbyEntities(7, 7, 7)) {
+        switch (tier) {
+            case 3:
+                radius = 9;
+                duration = 7;
+                damage = 8.0;
+                break;
+            case 2:
+                radius = 7;
+                duration = 5;
+                damage = 6.0;
+                break;
+            default:
+                radius = 5;
+                duration = 3;
+                damage = 4.0;
+        }
+        
+        List<Entity> frozen = new ArrayList<>();
+        
+        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (entity instanceof LivingEntity && entity != player) {
                 LivingEntity living = (LivingEntity) entity;
                 if (canPvP(player, living)) {
@@ -1071,16 +1497,16 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     }
                     
                     // Immobilize
-                    living.addPotionEffect(new PotionEffect(SLOWNESS, 100, 255));
-                    living.addPotionEffect(new PotionEffect(JUMP_BOOST, 100, 128));
+                    living.addPotionEffect(new PotionEffect(SLOWNESS, duration * 20, 255));
+                    living.addPotionEffect(new PotionEffect(JUMP_BOOST, duration * 20, 128));
                 }
             }
         }
         
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, 2.0f, 2.0f);
-        player.getWorld().spawnParticle(Particle.SNOWFLAKE, player.getLocation(), 100, 3, 3, 3); // Changed to SNOWFLAKE
+        player.getWorld().spawnParticle(Particle.SNOWFLAKE, player.getLocation(), 100, 3, 3, 3);
         
-        // Thaw after 5 seconds
+        // Thaw after duration
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -1095,7 +1521,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                                     Block block = loc.clone().add(x, y, z).getBlock();
                                     if (block.getType() == Material.ICE) {
                                         block.setType(Material.AIR);
-                                        block.getWorld().spawnParticle(Particle.FALLING_DUST, block.getLocation(), 10, 0.5, 0.5, 0.5); // Changed to FALLING_DUST
+                                        block.getWorld().spawnParticle(Particle.FALLING_DUST, block.getLocation(), 10, 0.5, 0.5, 0.5);
                                     }
                                 }
                             }
@@ -1106,41 +1532,65 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     }
                 }
             }
-        }.runTaskLater(this, 100); // 5 seconds
+        }.runTaskLater(this, duration * 20);
     }
     
     private void blizzard(Player player, int tier) {
+        // Get tier-specific values
+        int radius;
+        int duration;
+        double damage;
+        int slowLevel;
+        
+        switch (tier) {
+            case 3:
+                radius = 10;
+                duration = 7;
+                damage = 3.0;
+                slowLevel = 4;
+                break;
+            case 2:
+                radius = 8;
+                duration = 6;
+                damage = 2.0;
+                slowLevel = 3;
+                break;
+            default:
+                radius = 6;
+                duration = 5;
+                damage = 1.0;
+                slowLevel = 2;
+        }
+        
         Location center = player.getLocation();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 2.0 * multiplier;
         
         new BukkitRunnable() {
             int ticks = 0;
             
             @Override
             public void run() {
-                if (ticks >= 140) { // 7 seconds
+                if (ticks >= duration * 20) { // Convert to ticks
                     this.cancel();
                     return;
                 }
                 
                 // Snow particles
                 for (int i = 0; i < 50; i++) {
-                    double x = (Math.random() - 0.5) * 20;
+                    double x = (Math.random() - 0.5) * radius * 2;
                     double y = Math.random() * 5;
-                    double z = (Math.random() - 0.5) * 20;
+                    double z = (Math.random() - 0.5) * radius * 2;
                     Location particleLoc = center.clone().add(x, y, z);
-                    center.getWorld().spawnParticle(Particle.SNOWFLAKE, particleLoc, 1, 0, -0.5, 0); // Changed to SNOWFLAKE
+                    center.getWorld().spawnParticle(Particle.SNOWFLAKE, particleLoc, 1, 0, -0.5, 0);
                 }
                 
                 // Damage and slow enemies
                 if (ticks % 20 == 0) { // Every second
-                    for (Entity entity : center.getWorld().getNearbyEntities(center, 10, 5, 10)) {
+                    for (Entity entity : center.getWorld().getNearbyEntities(center, radius, 5, radius)) {
                         if (entity instanceof LivingEntity && entity != player) {
                             LivingEntity living = (LivingEntity) entity;
                             if (canPvP(player, living)) {
                                 living.damage(damage, player);
-                                living.addPotionEffect(new PotionEffect(SLOWNESS, 40, 3));
+                                living.addPotionEffect(new PotionEffect(SLOWNESS, 40, slowLevel));
                             }
                         }
                     }
@@ -1157,12 +1607,28 @@ public class ElementalCores extends JavaPlugin implements Listener {
     
     // Nature Abilities
     private void naturesEmbrace(Player player, int tier) {
+        // Get tier-specific values
+        int radius;
+        double healing;
+        
+        switch (tier) {
+            case 3:
+                radius = 10;
+                healing = 16.0;
+                break;
+            case 2:
+                radius = 7;
+                healing = 12.0;
+                break;
+            default:
+                radius = 5;
+                healing = 8.0;
+        }
+        
         Location center = player.getLocation();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double healing = 16.0 * multiplier;
         
         // Heal and cleanse effects
-        for (Entity entity : player.getNearbyEntities(10, 10, 10)) {
+        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (entity instanceof Player) {
                 Player ally = (Player) entity;
                 ally.setHealth(Math.min(ally.getHealth() + healing, ally.getMaxHealth()));
@@ -1185,20 +1651,40 @@ public class ElementalCores extends JavaPlugin implements Listener {
         player.setHealth(Math.min(player.getHealth() + healing, player.getMaxHealth()));
         
         center.getWorld().playSound(center, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
-        center.getWorld().spawnParticle(Particle.COMPOSTER, center, 100, 5, 2, 5); // Changed to COMPOSTER
+        center.getWorld().spawnParticle(Particle.COMPOSTER, center, 100, 5, 2, 5);
     }
     
     private void thornfield(Player player, int tier) {
+        // Get tier-specific values
+        int radius;
+        int duration;
+        double damage;
+        
+        switch (tier) {
+            case 3:
+                radius = 9;
+                duration = 4;
+                damage = 3.0;
+                break;
+            case 2:
+                radius = 7;
+                duration = 3;
+                damage = 2.0;
+                break;
+            default:
+                radius = 5;
+                duration = 2;
+                damage = 1.0;
+        }
+        
         Location center = player.getLocation();
         List<Entity> rooted = new ArrayList<>();
         List<Location> thornLocations = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 2.0 * multiplier;
         
         // Create thorn field
-        for (int x = -7; x <= 7; x++) {
-            for (int z = -7; z <= 7; z++) {
-                if (Math.sqrt(x*x + z*z) <= 7) {
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                if (Math.sqrt(x*x + z*z) <= radius) {
                     Location thornLoc = center.clone().add(x, 0, z);
                     
                     // Find ground
@@ -1214,13 +1700,13 @@ public class ElementalCores extends JavaPlugin implements Listener {
         }
         
         // Root enemies
-        for (Entity entity : center.getWorld().getNearbyEntities(center, 7, 3, 7)) {
+        for (Entity entity : center.getWorld().getNearbyEntities(center, radius, 3, radius)) {
             if (entity instanceof LivingEntity && entity != player) {
                 LivingEntity living = (LivingEntity) entity;
                 if (canPvP(player, living)) {
                     rooted.add(living);
-                    living.addPotionEffect(new PotionEffect(SLOWNESS, 80, 255));
-                    living.addPotionEffect(new PotionEffect(JUMP_BOOST, 80, 128));
+                    living.addPotionEffect(new PotionEffect(SLOWNESS, duration * 20, 255));
+                    living.addPotionEffect(new PotionEffect(JUMP_BOOST, duration * 20, 128));
                 }
             }
         }
@@ -1233,14 +1719,14 @@ public class ElementalCores extends JavaPlugin implements Listener {
             
             @Override
             public void run() {
-                if (ticks >= 80) { // 4 seconds
+                if (ticks >= duration * 20) {
                     this.cancel();
                     return;
                 }
                 
                 // Show thorns
                 for (Location loc : thornLocations) {
-                    loc.getWorld().spawnParticle(Particle.FALLING_DUST, loc, 2, 0.2, 0.5, 0.2); // Changed to FALLING_DUST
+                    loc.getWorld().spawnParticle(Particle.FALLING_DUST, loc, 2, 0.2, 0.5, 0.2);
                 }
                 
                 // Damage rooted enemies
@@ -1260,13 +1746,33 @@ public class ElementalCores extends JavaPlugin implements Listener {
     
     // Shadow Abilities
     private void shadowCloneArmy(Player player, int tier) {
-        List<Entity> clones = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 4.0 * multiplier;
+        // Get tier-specific values
+        int numClones;
+        int duration;
+        double damage;
         
-        // Spawn 5 clones
-        for (int i = 0; i < 5; i++) {
-            double angle = (Math.PI * 2 / 5) * i;
+        switch (tier) {
+            case 3:
+                numClones = 5;
+                duration = 10;
+                damage = 4.0;
+                break;
+            case 2:
+                numClones = 3;
+                duration = 7;
+                damage = 3.0;
+                break;
+            default:
+                numClones = 2;
+                duration = 5;
+                damage = 2.0;
+        }
+        
+        List<Entity> clones = new ArrayList<>();
+        
+        // Spawn clones
+        for (int i = 0; i < numClones; i++) {
+            double angle = (Math.PI * 2 / numClones) * i;
             double x = Math.cos(angle) * 3;
             double z = Math.sin(angle) * 3;
             Location spawnLoc = player.getLocation().add(x, 0, z);
@@ -1276,13 +1782,13 @@ public class ElementalCores extends JavaPlugin implements Listener {
             clone.setCustomNameVisible(true);
             clone.setBaby(false);
             clone.setHealth(20.0);
-            clone.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200, 1));
-            clone.addPotionEffect(new PotionEffect(STRENGTH, 200, (int)(damage / 2)));
+            clone.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, duration * 20, 1));
+            clone.addPotionEffect(new PotionEffect(STRENGTH, duration * 20, (int)(damage / 2)));
             
             clones.add(clone);
             
             // Spawn effect
-            spawnLoc.getWorld().spawnParticle(Particle.CLOUD, spawnLoc, 20, 0.5, 1, 0.5); // Changed to SMOKE_NORMAL
+            spawnLoc.getWorld().spawnParticle(Particle.CLOUD, spawnLoc, 20, 0.5, 1, 0.5);
         }
         
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
@@ -1293,13 +1799,13 @@ public class ElementalCores extends JavaPlugin implements Listener {
             
             @Override
             public void run() {
-                if (ticks >= 200) { // 10 seconds
+                if (ticks >= duration * 20) { // Convert to ticks
                     this.cancel();
                     
                     // Remove clones
                     for (Entity clone : clones) {
                         if (clone.isValid()) {
-                            clone.getWorld().spawnParticle(Particle.CLOUD, clone.getLocation(), 20, 0.5, 1, 0.5); // Changed to SMOKE_NORMAL
+                            clone.getWorld().spawnParticle(Particle.CLOUD, clone.getLocation(), 20, 0.5, 1, 0.5);
                             clone.remove();
                         }
                     }
@@ -1340,21 +1846,41 @@ public class ElementalCores extends JavaPlugin implements Listener {
     }
     
     private void voidStep(Player player, int tier) {
+        // Get tier-specific values
+        int distance;
+        int duration;
+        double damage;
+        
+        switch (tier) {
+            case 3:
+                distance = 20;
+                duration = 5;
+                damage = 3.0;
+                break;
+            case 2:
+                distance = 15;
+                duration = 3;
+                damage = 2.0;
+                break;
+            default:
+                distance = 10;
+                duration = 2;
+                damage = 1.0;
+        }
+        
         Location start = player.getLocation();
-        Location target = player.getTargetBlock(null, 20).getLocation().add(0, 1, 0);
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 3.0 * multiplier;
+        Location target = player.getTargetBlock(null, distance).getLocation().add(0, 1, 0);
         
         // Create darkness cloud at start
-        start.getWorld().spawnParticle(Particle.CLOUD, start, 100, 2, 2, 2); // Changed to SMOKE_NORMAL
+        start.getWorld().spawnParticle(Particle.CLOUD, start, 100, 2, 2, 2);
         
         // Blind and wither enemies at start location
         for (Entity entity : start.getWorld().getNearbyEntities(start, 5, 5, 5)) {
             if (entity instanceof LivingEntity && entity != player) {
                 LivingEntity living = (LivingEntity) entity;
                 if (canPvP(player, living)) {
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0));
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 100, (int)(damage / 2)));
+                    living.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, duration * 20, 0));
+                    living.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, duration * 20, (int)(damage / 2)));
                 }
             }
         }
@@ -1363,7 +1889,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         player.teleport(target);
         
         // Create darkness cloud at target
-        target.getWorld().spawnParticle(Particle.CLOUD, target, 100, 2, 2, 2); // Changed to SMOKE_NORMAL
+        target.getWorld().spawnParticle(Particle.CLOUD, target, 100, 2, 2, 2);
         
         player.getWorld().playSound(start, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
         player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
@@ -1371,54 +1897,102 @@ public class ElementalCores extends JavaPlugin implements Listener {
     
     // Light Abilities
     private void solarFlare(Player player, int tier) {
+        // Get tier-specific values
+        int radius;
+        int duration;
+        double damage;
+        int absorptionLevel;
+        int absorptionDuration;
+        
+        switch (tier) {
+            case 3:
+                radius = 10;
+                duration = 7;
+                damage = 8.0;
+                absorptionLevel = 3;
+                absorptionDuration = 10;
+                break;
+            case 2:
+                radius = 7;
+                duration = 5;
+                damage = 6.0;
+                absorptionLevel = 2;
+                absorptionDuration = 7;
+                break;
+            default:
+                radius = 5;
+                duration = 3;
+                damage = 4.0;
+                absorptionLevel = 1;
+                absorptionDuration = 5;
+        }
+        
         Location center = player.getLocation();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double damage = 8.0 * multiplier;
         
         // Blind enemies
-        for (Entity entity : center.getWorld().getNearbyEntities(center, 10, 10, 10)) {
+        for (Entity entity : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
             if (entity instanceof LivingEntity && entity != player) {
                 LivingEntity living = (LivingEntity) entity;
                 if (canPvP(player, living)) {
-                    living.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0));
+                    living.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, duration * 20, 0));
                     living.damage(damage, player);
                 }
             }
         }
         
         // Give player absorption
-        player.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 200, 3));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, absorptionDuration * 20, absorptionLevel));
         
         // Visual effect
         center.getWorld().playSound(center, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
         
         new BukkitRunnable() {
-            double radius = 0;
+            double radiusExpanding = 0;
             
             @Override
             public void run() {
-                if (radius >= 10) {
+                if (radiusExpanding >= radius) {
                     this.cancel();
                     return;
                 }
                 
                 for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 16) {
-                    double x = Math.cos(angle) * radius;
-                    double z = Math.sin(angle) * radius;
+                    double x = Math.cos(angle) * radiusExpanding;
+                    double z = Math.sin(angle) * radiusExpanding;
                     Location particleLoc = center.clone().add(x, 1, z);
                     center.getWorld().spawnParticle(Particle.END_ROD, particleLoc, 1, 0, 0, 0);
                 }
                 
-                radius += 0.5;
+                radiusExpanding += 0.5;
             }
         }.runTaskTimer(this, 0, 1);
     }
     
     private void sanctuary(Player player, int tier) {
+        // Get tier-specific values
+        int radius;
+        int duration;
+        double healing;
+        
+        switch (tier) {
+            case 3:
+                radius = 10;
+                duration = 7;
+                healing = 1.5;
+                break;
+            case 2:
+                radius = 7;
+                duration = 5;
+                healing = 1.0;
+                break;
+            default:
+                radius = 5;
+                duration = 4;
+                healing = 0.5;
+        }
+        
         Location center = player.getLocation();
         List<Player> allies = new ArrayList<>();
-        double multiplier = getConfig().getDouble("tier-multipliers." + tier, 1.0);
-        double healing = 1.0 * multiplier;
         
         // Create dome visual
         new BukkitRunnable() {
@@ -1426,7 +2000,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
             
             @Override
             public void run() {
-                if (ticks >= 140) { // 7 seconds
+                if (ticks >= duration * 20) { // Convert to ticks
                     this.cancel();
                     return;
                 }
@@ -1437,9 +2011,9 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     double v = Math.random();
                     double theta = 2 * Math.PI * u;
                     double phi = Math.acos(2 * v - 1);
-                    double x = 10 * Math.sin(phi) * Math.cos(theta);
-                    double y = 10 * Math.sin(phi) * Math.sin(theta);
-                    double z = 10 * Math.cos(phi);
+                    double x = radius * Math.sin(phi) * Math.cos(theta);
+                    double y = radius * Math.sin(phi) * Math.sin(theta);
+                    double z = radius * Math.cos(phi);
                     
                     if (y > 0) { // Only upper half of sphere
                         Location particleLoc = center.clone().add(x, y, z);
@@ -1448,7 +2022,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 }
                 
                 // Protect allies inside
-                for (Entity entity : center.getWorld().getNearbyEntities(center, 10, 10, 10)) {
+                for (Entity entity : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
                     if (entity instanceof Player) {
                         Player ally = (Player) entity;
                         if (!allies.contains(ally)) {
@@ -1488,6 +2062,18 @@ public class ElementalCores extends JavaPlugin implements Listener {
         sender.sendMessage(ChatColor.GREEN + "Nature: " + ChatColor.GRAY + "Nature's Embrace, Thornfield");
         sender.sendMessage(ChatColor.DARK_PURPLE + "Shadow: " + ChatColor.GRAY + "Shadow Clone Army, Void Step");
         sender.sendMessage(ChatColor.LIGHT_PURPLE + "Light: " + ChatColor.GRAY + "Solar Flare, Sanctuary");
+        sender.sendMessage(ChatColor.GRAY + "Each core has 3 tiers with stronger abilities.");
+        sender.sendMessage(ChatColor.GRAY + "Use Element Caller to reroll your core type.");
+    }
+    
+    // Helper method to check if an item is an Elemental Core
+    private boolean isElementalCore(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) {
+            return false;
+        }
+        
+        ItemMeta meta = item.getItemMeta();
+        return meta.getPersistentDataContainer().has(coreKey, PersistentDataType.STRING);
     }
     
     // Method to create an elemental core item
@@ -1495,94 +2081,114 @@ public class ElementalCores extends JavaPlugin implements Listener {
         ItemStack core = new ItemStack(Material.PAPER);
         ItemMeta meta = core.getItemMeta();
         
+        String tierName;
+        switch (tier) {
+            case 3:
+                tierName = "Master";
+                break;
+            case 2:
+                tierName = "Advanced";
+                break;
+            default:
+                tierName = "Novice";
+                tier = 1;
+        }
+        
         // Set display name and lore based on core type
         switch (coreName.toLowerCase()) {
             case "earth":
-                meta.setDisplayName(ChatColor.GOLD + "Earth Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.GOLD + "Earth Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Earth Fortress",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Earthquake",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Resistance III, Haste II",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + (tier >= 3 ? "Resistance II, Haste II" : 
+                                                                      (tier >= 2 ? "Resistance I, Haste II" : "Resistance I, Haste I")),
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
                 break;
             case "water":
-                meta.setDisplayName(ChatColor.AQUA + "Water Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.AQUA + "Water Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Tidal Wave",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Maelstrom",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Water Breathing, Dolphin's Grace II",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + (tier >= 3 ? "Water Breathing, Dolphin's Grace II" : 
+                                                                     "Water Breathing, Dolphin's Grace I"),
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
                 break;
             case "fire":
-                meta.setDisplayName(ChatColor.RED + "Fire Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.RED + "Fire Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Inferno Meteor",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Ring of Fire",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Fire Resistance, Strength II",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + (tier >= 2 ? "Fire Resistance, Strength II" : 
+                                                                     "Fire Resistance, Strength I"),
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
                 break;
             case "air":
-                meta.setDisplayName(ChatColor.WHITE + "Air Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.WHITE + "Air Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Hurricane Leap",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Cyclone",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Jump Boost III, Slow Falling",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Jump Boost II, Slow Falling",
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
                 break;
             case "lightning":
-                meta.setDisplayName(ChatColor.YELLOW + "Lightning Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.YELLOW + "Lightning Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Thunderstorm",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Lightning Dash",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Speed III, Night Vision",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + (tier >= 3 ? "Speed II, Night Vision" : 
+                                                                     "Speed I, Night Vision"),
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
                 break;
             case "ice":
-                meta.setDisplayName(ChatColor.BLUE + "Ice Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.BLUE + "Ice Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Glacial Prison",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Blizzard",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Resistance II, Frost Walker II",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + (tier >= 3 ? "Resistance II, Frost Walker II" : 
+                                                                     "Resistance I, Frost Walker I"),
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
                 break;
             case "nature":
-                meta.setDisplayName(ChatColor.GREEN + "Nature Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.GREEN + "Nature Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Nature's Embrace",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Thornfield",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Regeneration II, Saturation",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + (tier >= 3 ? "Regeneration II, Saturation" : 
+                                                                     "Regeneration I, Saturation"),
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
                 break;
             case "shadow":
-                meta.setDisplayName(ChatColor.DARK_PURPLE + "Shadow Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.DARK_PURPLE + "Shadow Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Shadow Clone Army",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Void Step",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Night Vision, Invisibility",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Night Vision, Invisibility" + 
+                                                                     (tier >= 3 ? " (Long)" : (tier >= 2 ? " (Medium)" : " (Short)")),
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
                 break;
             case "light":
-                meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Light Core " + ChatColor.GRAY + "(Tier " + tier + ")");
+                meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Light Core " + ChatColor.GRAY + "(" + tierName + ")");
                 meta.setLore(Arrays.asList(
                     ChatColor.GRAY + "Right Click: " + ChatColor.YELLOW + "Solar Flare",
                     ChatColor.GRAY + "Shift + Right Click: " + ChatColor.YELLOW + "Sanctuary",
-                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Glowing, Absorption II",
+                    ChatColor.GRAY + "Passive: " + ChatColor.GREEN + "Glowing, Absorption" + (tier >= 3 ? " II" : " I"),
                     "",
                     ChatColor.DARK_GRAY + "Hold in offhand to use"
                 ));
@@ -1593,7 +2199,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         meta.getPersistentDataContainer().set(coreKey, PersistentDataType.STRING, coreName.toLowerCase());
         meta.getPersistentDataContainer().set(tierKey, PersistentDataType.INTEGER, tier);
         
-        // Add special effect for visual flair - updated for 1.21.5
+        // Add special effect for visual flair
         meta.addEnchant(Enchantment.UNBREAKING, 1, true);
         
         core.setItemMeta(meta);
