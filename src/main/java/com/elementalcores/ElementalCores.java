@@ -49,7 +49,6 @@ public class ElementalCores extends JavaPlugin implements Listener {
     private final PotionEffectType STRENGTH = PotionEffectType.getByName("INCREASE_DAMAGE");
     private final PotionEffectType JUMP_BOOST = PotionEffectType.getByName("JUMP");
     private final PotionEffectType SLOWNESS = PotionEffectType.getByName("SLOW");
-    private final PotionEffectType NAUSEA = PotionEffectType.getByName("CONFUSION");
     
     @Override
     public void onEnable() {
@@ -829,7 +828,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     
                     // Stun for tier 3
                     if (tier == 3) {
-                        living.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 60, 0));
+                        living.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0));
                     }
                 }
             }
