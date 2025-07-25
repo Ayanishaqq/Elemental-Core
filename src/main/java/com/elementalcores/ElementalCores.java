@@ -2208,7 +2208,22 @@ case "earth":
         
         // Add special effect for visual flair
         meta.addEnchant(Enchantment.UNBREAKING, 1, true);
-        
+
+        // >>> ADD THESE LINES HERE <<<
+        int modelData = 1001; // Default to Earth Core
+        switch (coreName.toLowerCase()) {
+            case "earth": modelData = 1001; break;
+            case "water": modelData = 1002; break;
+            case "fire": modelData = 1003; break;
+            case "air": modelData = 1004; break;
+            case "lightning": modelData = 1005; break;
+            case "ice": modelData = 1006; break;
+            case "nature": modelData = 1007; break;
+            case "shadow": modelData = 1008; break;
+            case "light": modelData = 1009; break;
+        }
+        meta.setCustomModelData(modelData);
+            
         core.setItemMeta(meta);
         return core;
     }
