@@ -503,15 +503,23 @@ public class ElementalCores extends JavaPlugin implements Listener {
         }
         
         switch (coreName.toLowerCase()) {
-            case "earth":
-                abilityName = "Earth Fortress";
-                if (isOnCooldown(player, abilityName)) {
-                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
-                    return;
-                }
-                earthFortress(player, tier);
-                setCooldown(player, abilityName, cooldown);
-                break;
+case "earth":
+    abilityName = "Earth Fortress";
+    if (isOnCooldown(player, abilityName)) {
+        sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+        return;
+    }
+    // Optional: Add a global cooldown to prevent all ability spam
+    String globalCooldownKey = "core_global";
+    if (isOnCooldown(player, globalCooldownKey)) {
+        sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+        return;
+    }
+    setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+
+    earthFortress(player, tier);
+    setCooldown(player, abilityName, cooldown);
+    break;
                 
             case "water":
                 abilityName = "Tidal Wave";
