@@ -357,7 +357,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
         
         // Effects
         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
-        player.getWorld().spawnParticle(Particle.SPELL_WITCH, player.getLocation().add(0, 1, 0), 50, 0.5, 1, 0.5);
+        player.getWorld().spawnParticle(Particle.DRAGON_BREATH, player.getLocation().add(0, 1, 0), 50, 0.5, 1, 0.5);
         
         player.sendMessage(ChatColor.GREEN + "The Element Caller transforms your core into something new!");
     }
@@ -1638,7 +1638,7 @@ public class ElementalCores extends JavaPlugin implements Listener {
                     PotionEffectType type = effect.getType();
                     if (type.equals(PotionEffectType.POISON) || type.equals(PotionEffectType.WITHER) ||
                         type.equals(SLOWNESS) || type.equals(PotionEffectType.WEAKNESS) ||
-                        type.equals(PotionEffectType.BLINDNESS) || type.equals(NAUSEA)) {
+                        type.equals(PotionEffectType.BLINDNESS)) {
                         ally.removePotionEffect(type);
                     }
                 }
