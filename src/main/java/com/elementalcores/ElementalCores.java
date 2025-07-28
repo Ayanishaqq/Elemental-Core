@@ -31,6 +31,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.EventPriority;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
+import dev.lone.itemsadder.api.CustomStack;
 
 import java.util.*;
 
@@ -188,9 +189,22 @@ public class ElementalCores extends JavaPlugin implements Listener {
         
         // Check for Element Caller use
         ItemStack mainhand = player.getInventory().getItemInMainHand();
-        if (mainhand != null && mainhand.getType() == Material.HEART_OF_THE_SEA && mainhand.hasItemMeta()) {
-            ItemMeta meta = mainhand.getItemMeta();
-            if (meta.hasDisplayName() && meta.getDisplayName().equals(ChatColor.GOLD + "Element Caller")) {
+        if (mainhand != null && 
+            (mainhand.getType() == Material.HEART_OF_THE_SEA || isItemsAdderElementCaller(mainhand)) && 
+            mainhand.hasItemMeta()) {
+            
+            // For vanilla item
+            if (mainhand.getType() == Material.HEART_OF_THE_SEA) {
+                ItemMeta meta = mainhand.getItemMeta();
+                if (meta.hasDisplayName() && meta.getDisplayName().equals(ChatColor.GOLD + "Element Caller")) {
+                    if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                        event.setCancelled(true);
+                        useElementCaller(player, mainhand);
+                    }
+                }
+            } 
+            // For ItemsAdder item
+            else if (isItemsAdderElementCaller(mainhand)) {
                 if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
                     event.setCancelled(true);
                     useElementCaller(player, mainhand);
@@ -294,12 +308,24 @@ public class ElementalCores extends JavaPlugin implements Listener {
             }
         }
         
-        ItemStack core = createCoreItem(coreName, tier);
+        ItemStack core = getCoreItem(coreName, tier);
         player.getInventory().addItem(core);
         player.sendMessage(ChatColor.GREEN + "You received a " + core.getItemMeta().getDisplayName() + ChatColor.GREEN + "!");
     }
     
     private void giveElementCaller(Player player) {
+        // Try to use ItemsAdder element caller first
+        if (getServer().getPluginManager().getPlugin("ItemsAdder") != null) {
+            CustomStack customItem = CustomStack.getInstance("elemental_cores:element_caller");
+            if (customItem != null) {
+                ItemStack elementCaller = customItem.getItemStack();
+                player.getInventory().addItem(elementCaller);
+                player.sendMessage(ChatColor.GREEN + "You received an " + ChatColor.GOLD + "Element Caller" + ChatColor.GREEN + "!");
+                return;
+            }
+        }
+        
+        // Fallback to original vanilla item
         ItemStack elementCaller = new ItemStack(Material.HEART_OF_THE_SEA);
         ItemMeta meta = elementCaller.getItemMeta();
         meta.setDisplayName(ChatColor.GOLD + "Element Caller");
@@ -314,6 +340,15 @@ public class ElementalCores extends JavaPlugin implements Listener {
         
         player.getInventory().addItem(elementCaller);
         player.sendMessage(ChatColor.GREEN + "You received an " + ChatColor.GOLD + "Element Caller" + ChatColor.GREEN + "!");
+    }
+    
+    private boolean isItemsAdderElementCaller(ItemStack item) {
+        if (getServer().getPluginManager().getPlugin("ItemsAdder") != null) {
+            CustomStack customStack = CustomStack.byItemStack(item);
+            return customStack != null && 
+                   customStack.getNamespacedID().equals("elemental_cores:element_caller");
+        }
+        return false;
     }
     
     private void useElementCaller(Player player, ItemStack elementCaller) {
@@ -2349,5 +2384,27 @@ public class ElementalCores extends JavaPlugin implements Listener {
             
         core.setItemMeta(meta);
         return core;
+    }
+    
+    // ItemsAdder integration method
+    public ItemStack getCoreItem(String coreName, int tier) {
+        // Check if ItemsAdder is available
+        if (getServer().getPluginManager().getPlugin("ItemsAdder") != null) {
+            String itemId = "elemental_cores:" + coreName.toLowerCase() + "_core";
+            CustomStack customItem = CustomStack.getInstance(itemId);
+            
+            if (customItem != null) {
+                ItemStack item = customItem.getItemStack();
+                // Apply core data to make it functional
+                ItemMeta meta = item.getItemMeta();
+                meta.getPersistentDataContainer().set(coreKey, PersistentDataType.STRING, coreName.toLowerCase());
+                meta.getPersistentDataContainer().set(tierKey, PersistentDataType.INTEGER, tier);
+                item.setItemMeta(meta);
+                return item;
+            }
+        }
+        
+        // Fallback to original method
+        return createCoreItem(coreName, tier);
     }
 }
