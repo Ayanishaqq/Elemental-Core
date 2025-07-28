@@ -502,24 +502,26 @@ public class ElementalCores extends JavaPlugin implements Listener {
                 cooldown = 12;
         }
         
+        // Global cooldown key
+        String globalCooldownKey = "core_global";
+        
         switch (coreName.toLowerCase()) {
-case "earth":
-    abilityName = "Earth Fortress";
-    if (isOnCooldown(player, abilityName)) {
-        sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
-        return;
-    }
-    // Optional: Add a global cooldown to prevent all ability spam
-    String globalCooldownKey = "core_global";
-    if (isOnCooldown(player, globalCooldownKey)) {
-        sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
-        return;
-    }
-    setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
-
-    earthFortress(player, tier);
-    setCooldown(player, abilityName, cooldown);
-    break;
+            case "earth":
+                abilityName = "Earth Fortress";
+                if (isOnCooldown(player, abilityName)) {
+                    sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
+                    return;
+                }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
+                earthFortress(player, tier);
+                setCooldown(player, abilityName, cooldown);
+                break;
                 
             case "water":
                 abilityName = "Tidal Wave";
@@ -527,6 +529,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 tidalWave(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -537,6 +546,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 infernoMeteor(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -547,6 +563,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 hurricaneLeap(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -557,6 +580,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 thunderstorm(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -567,6 +597,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 glacialPrison(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -577,6 +614,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 naturesEmbrace(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -587,6 +631,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 shadowCloneArmy(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -597,6 +648,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 solarFlare(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -628,6 +686,9 @@ case "earth":
                 cooldown = 18;
         }
         
+        // Global cooldown key
+        String globalCooldownKey = "core_global";
+        
         switch (coreName.toLowerCase()) {
             case "earth":
                 abilityName = "Earthquake";
@@ -635,6 +696,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 earthquake(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -645,6 +713,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 maelstrom(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -655,6 +730,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 ringOfFire(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -665,6 +747,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 cyclone(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -675,6 +764,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 lightningDash(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -685,6 +781,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 blizzard(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -695,6 +798,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 thornfield(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -705,6 +815,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 voidStep(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -715,6 +832,13 @@ case "earth":
                     sendActionBar(player, ChatColor.YELLOW + abilityName + " ⏳ " + ChatColor.RED + getCooldownLeft(player, abilityName) + "s left");
                     return;
                 }
+                // Global cooldown check
+                if (isOnCooldown(player, globalCooldownKey)) {
+                    sendActionBar(player, ChatColor.RED + "You're using abilities too fast!");
+                    return;
+                }
+                setCooldown(player, globalCooldownKey, 1); // 1 second global cooldown
+                
                 sanctuary(player, tier);
                 setCooldown(player, abilityName, cooldown);
                 break;
@@ -2209,7 +2333,6 @@ case "earth":
         // Add special effect for visual flair
         meta.addEnchant(Enchantment.UNBREAKING, 1, true);
 
-        // >>> ADD THESE LINES HERE <<<
         int modelData = 1001; // Default to Earth Core
         switch (coreName.toLowerCase()) {
             case "earth": modelData = 1001; break;
