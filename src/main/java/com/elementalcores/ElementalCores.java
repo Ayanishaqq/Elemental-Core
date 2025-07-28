@@ -246,15 +246,15 @@ public class ElementalCores extends JavaPlugin implements Listener {
     
     private void playFirstJoinAnimation(Player player) {
         String[] coreNames = {
-            ChatColor.GOLD + "Earth",
-            ChatColor.AQUA + "Water",
-            ChatColor.RED + "Fire",
-            ChatColor.WHITE + "Air",
-            ChatColor.YELLOW + "Lightning",
-            ChatColor.BLUE + "Ice",
-            ChatColor.GREEN + "Nature",
-            ChatColor.DARK_PURPLE + "Shadow",
-            ChatColor.LIGHT_PURPLE + "Light"
+            ChatColor.GOLD + "魚",
+            ChatColor.AQUA + "頭",
+            ChatColor.RED + "紅",
+            ChatColor.WHITE + "弗",
+            ChatColor.YELLOW + "吉",
+            ChatColor.BLUE + "比",
+            ChatColor.GREEN + "艾",
+            ChatColor.DARK_PURPLE + "馬",
+            ChatColor.LIGHT_PURPLE + "尺"
         };
         
         new BukkitRunnable() {
@@ -493,13 +493,13 @@ public class ElementalCores extends JavaPlugin implements Listener {
         int cooldown;
         switch (tier) {
             case 3:
-                cooldown = 8;
-                break;
-            case 2:
                 cooldown = 10;
                 break;
-            default:
+            case 2:
                 cooldown = 12;
+                break;
+            default:
+                cooldown = 15;
         }
         
         // Global cooldown key
@@ -677,13 +677,13 @@ public class ElementalCores extends JavaPlugin implements Listener {
         int cooldown;
         switch (tier) {
             case 3:
-                cooldown = 12;
+                cooldown = 14;
                 break;
             case 2:
-                cooldown = 15;
+                cooldown = 17;
                 break;
             default:
-                cooldown = 18;
+                cooldown = 20;
         }
         
         // Global cooldown key
